@@ -17,6 +17,15 @@ export default function Home() {
   const [inputText, setInputText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  
+  // State สำหรับ Modal แก้ไขข้อความ
+  const [editingItem, setEditingItem] = useState<TextItem | null>(null);
+  const [editText, setEditText] = useState('');
+  const [isEditingSaving, setIsEditingSaving] = useState(false);
+
+  // State สำหรับ Modal ลบข้อความ
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchTexts();
@@ -46,46 +55,70 @@ export default function Home() {
     });
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm('คุณพี่ลีดต้องการลบข้อความนี้ใช่ไหมคะ?')) {
-      // Optimistic UI update
-      setDataStore(prev => ({
-        ...prev,
-        [currentTab]: prev[currentTab].filter(item => item.id !== id)
-      }));
-      try {
-        await fetch(`/api/store?id=${id}`, { method: 'DELETE' });
-      } catch (e) {
-        console.error('Delete failed', e);
-        fetchTexts();
-      }
-    }
+  const handleDelete = (id: number) => {
+    setDeletingItemId(id);
   };
 
-  const handleEdit = async (item: TextItem) => {
-    const newText = prompt('แก้ไขข้อความ:', item.content);
-    if (newText !== null && newText.trim() !== '' && newText !== item.content) {
-      const trimmedText = newText.trim();
-      
-      setDataStore(prev => ({
-        ...prev,
-        [currentTab]: prev[currentTab].map(x => x.id === item.id ? { ...x, content: trimmedText } : x)
-      }));
-
-      try {
-        const res = await fetch('/api/store', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: item.id, content: trimmedText })
-        });
-        const data = await res.json();
-        if (!data.success) throw new Error('Update failed');
-      } catch (e) {
-        console.error('Edit failed', e);
-        alert("เกิดข้อผิดพลาดในการแก้ไขข้อมูล");
-        fetchTexts();
-      }
+  const confirmDelete = async () => {
+    if (deletingItemId === null) return;
+    
+    setIsDeleting(true);
+    
+    // Optimistic UI update
+    setDataStore(prev => ({
+      ...prev,
+      [currentTab]: prev[currentTab].filter(item => item.id !== deletingItemId)
+    }));
+    
+    try {
+      await fetch(`/api/store?id=${deletingItemId}`, { method: 'DELETE' });
+    } catch (e) {
+      console.error('Delete failed', e);
+      fetchTexts(); // คืนค่าถ้าลบไม่สำเร็จ
     }
+    
+    setIsDeleting(false);
+    setDeletingItemId(null);
+  };
+
+  const handleEdit = (item: TextItem) => {
+    setEditingItem(item);
+    setEditText(item.content);
+  };
+
+  const confirmEdit = async () => {
+    if (!editingItem) return;
+    const trimmedText = editText.trim();
+    
+    if (trimmedText === '' || trimmedText === editingItem.content) {
+      setEditingItem(null);
+      return;
+    }
+
+    setIsEditingSaving(true);
+    
+    // Optimistic UI update
+    setDataStore(prev => ({
+      ...prev,
+      [currentTab]: prev[currentTab].map(x => x.id === editingItem.id ? { ...x, content: trimmedText } : x)
+    }));
+
+    try {
+      const res = await fetch('/api/store', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingItem.id, content: trimmedText })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error('Update failed');
+    } catch (e) {
+      console.error('Edit failed', e);
+      alert("เกิดข้อผิดพลาดในการแก้ไขข้อมูล");
+      fetchTexts(); // คืนค่าเดิมถ้าล้มเหลว
+    }
+    
+    setIsEditingSaving(false);
+    setEditingItem(null);
   };
 
   const saveText = async () => {
@@ -238,6 +271,74 @@ export default function Home() {
       <div className={`fixed top-28 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-slate-950 font-bold px-4 py-2 rounded-full shadow-lg text-sm pointer-events-none transition-opacity duration-300 z-50 ${showToast ? 'opacity-100' : 'opacity-0'}`}>
         <i className="fa-solid fa-circle-check mr-1"></i> คัดลอกแล้ว!
       </div>
+
+      {/* Modal แก้ไขข้อความ */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 w-full max-w-sm shadow-2xl scale-100 transform transition-all duration-300">
+            <h3 className="text-lg font-bold text-sky-400 mb-3 flex items-center">
+              <i className="fa-regular fa-pen-to-square mr-2"></i>แก้ไขข้อความ
+            </h3>
+            <textarea 
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              disabled={isEditingSaving}
+              className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 min-h-[120px] resize-y text-base"
+              placeholder="พิมพ์ข้อความที่ต้องการแก้ไข..."
+            />
+            <div className="flex gap-3 mt-4">
+              <button 
+                onClick={() => setEditingItem(null)}
+                disabled={isEditingSaving}
+                className="flex-1 py-3 rounded-xl font-medium text-slate-300 bg-slate-700 hover:bg-slate-600 transition-colors disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button 
+                onClick={confirmEdit}
+                disabled={isEditingSaving || !editText.trim()}
+                className="flex-1 py-3 rounded-xl font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+              >
+                {isEditingSaving ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-check"></i>}
+                บันทึก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal ยืนยันการลบ */}
+      {deletingItemId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-slate-800 border border-rose-500/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl scale-100 transform transition-all duration-300">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mb-4 text-rose-500 text-3xl">
+                <i className="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <h3 className="text-xl font-bold text-slate-100 mb-2">ลบข้อความนี้?</h3>
+              <p className="text-slate-400 text-sm mb-6">คุณพี่ลีดแน่ใจนะคะที่จะลบข้อความนี้?<br/>ลบแล้วกู้คืนไม่ได้น้าา</p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setDeletingItemId(null)}
+                disabled={isDeleting}
+                className="flex-1 py-3 rounded-xl font-medium text-slate-300 bg-slate-700 hover:bg-slate-600 transition-colors disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button 
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="flex-1 py-3 rounded-xl font-bold bg-rose-500 hover:bg-rose-600 text-slate-100 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+              >
+                {isDeleting ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-trash-can"></i>}
+                ลบเลย
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
