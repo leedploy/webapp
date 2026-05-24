@@ -18,10 +18,21 @@
 </head>
 <body class="text-slate-200 min-h-screen flex flex-col justify-between max-w-md mx-auto bg-slate-900 shadow-2xl">
 
-    <header class="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 p-4 sticky top-0 z-10 flex justify-between items-center">
-        <h1 class="text-xl font-bold text-sky-400"><i class="fa-solid fa-box-archive mr-2"></i>คลังบันทึกข้อความ</h1>
-        <span id="item-count" class="text-xs bg-slate-700 px-2.5 py-1 rounded-full text-slate-400">0 รายการ</span>
-    </header>
+    <div class="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 sticky top-0 z-10">
+        <header class="p-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-sky-400"><i class="fa-solid fa-box-archive mr-2"></i>คลังบันทึกข้อความ</h1>
+            <span id="item-count" class="text-xs bg-slate-700 px-2.5 py-1 rounded-full text-slate-400">0 รายการ</span>
+        </header>
+
+        <div class="flex border-t border-slate-700/60 text-center font-medium text-sm">
+            <button onclick="switchTab('general')" id="tab-general" class="flex-1 py-3 border-b-2 border-sky-500 text-sky-400 transition-all">
+                <i class="fa-regular fa-file-lines mr-1.5"></i>บันทึกทั่วไป
+            </button>
+            <button onclick="switchTab('account')" id="tab-account" class="flex-1 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all">
+                <i class="fa-solid fa-wallet mr-1.5"></i>บัญชี
+            </button>
+        </div>
+    </div>
 
     <main id="list-container" class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar pb-32">
         </main>
@@ -37,43 +48,45 @@
         </div>
     </div>
 
-    <div id="toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-slate-950 font-bold px-4 py-2 rounded-full shadow-lg text-sm opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+    <div id="toast" class="fixed top-28 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-slate-950 font-bold px-4 py-2 rounded-full shadow-lg text-sm opacity-0 pointer-events-none transition-opacity duration-300 z-50">
         <i class="fa-solid fa-circle-check mr-1"></i> คัดลอกแล้ว!
     </div>
 
     <script>
-        // ดึงข้อมูลเก่าจาก LocalStorage
-        let savedTexts = JSON.parse(localStorage.getItem('quick_saved_texts')) || [];
-
-        // ฟังก์ชันล้างข้อความเพื่อความปลอดภัยแบบเรียบง่าย
-        function safeHtml(str) {
-            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        }
+        // แยกแท็บสถานะปัจจุบัน (general = บันทึกทั่วไป, account = บัญชี)
+        let currentTab = 'general';
+        
+        // แยก Object จัดเก็บข้อมูลออกจากกันชัดเจน
+        let dataStore = {
+            general: JSON.parse(localStorage.getItem('quick_saved_texts')) || [],
+            account: JSON.parse(localStorage.getItem('account_saved_texts')) || []
+        };
 
         function renderDisplay() {
             const container = document.getElementById('list-container');
             const countBadge = document.getElementById('item-count');
             container.innerHTML = '';
             
-            countBadge.innerText = `${savedTexts.length} รายการ`;
+            // ดึงข้อมูลตามแท็บที่เลือกอยู่ปัจจุบัน
+            const currentList = dataStore[currentTab];
+            countBadge.innerText = `${currentList.length} รายการ`;
 
-            if (savedTexts.length === 0) {
+            if (currentList.length === 0) {
                 container.innerHTML = `
                     <div class="text-center py-12 text-slate-500">
                         <i class="fa-regular fa-clipboard text-4xl mb-3 block"></i>
-                        <p class="text-sm">ยังไม่มีข้อความที่บันทึกไว้ค่ะ</p>
+                        <p class="text-sm">ไม่มีข้อมูลในแท็บนี้ค่ะ</p>
                     </div>
                 `;
                 return;
             }
 
-            // วนลูปแสดงข้อความจากใหม่ไปเก่า
-            for (let i = savedTexts.length - 1; i >= 0; i--) {
-                const itemText = savedTexts[i];
+            // แสดงรายการจากใหม่ไปเก่า
+            for (let i = currentList.length - 1; i >= 0; i--) {
+                const itemText = currentList[i];
                 const card = document.createElement('div');
                 card.className = "bg-slate-800 border border-slate-700/50 rounded-xl p-4 flex justify-between items-start gap-3 shadow-md";
                 
-                // สร้างเนื้อหาข้างในการ์ด
                 card.innerHTML = `
                     <div class="flex-1 break-words pr-2 text-base text-slate-100 select-all"></div>
                     <div class="flex gap-1 items-center shrink-0">
@@ -86,21 +99,22 @@
                     </div>
                 `;
 
-                // ใช้ textContent เพื่อความปลอดภัยและรองรับการเว้นวรรค/อักขระพิเศษได้ 100%
                 card.querySelector('.flex-1').textContent = itemText;
 
-                // ผูกเหตุการณ์ปุ่ม Copy
+                // เหตุการณ์กดก๊อปปี้
                 card.querySelector('.copy-btn').addEventListener('click', function() {
                     navigator.clipboard.writeText(itemText).then(() => {
                         showToast();
                     });
                 });
 
-                // ผูกเหตุการณ์ปุ่ม ลบ
+                // เหตุการณ์กดลบ
                 card.querySelector('.delete-btn').addEventListener('click', function() {
                     if (confirm('คุณพี่ลีดต้องการลบข้อความนี้ใช่ไหมคะ?')) {
-                        savedTexts.splice(i, 1);
-                        localStorage.setItem('quick_saved_texts', JSON.stringify(savedTexts));
+                        currentList.splice(i, 1);
+                        // เซฟแยกตามคีย์ของแท็บตัวเอง
+                        const storageKey = currentTab === 'general' ? 'quick_saved_texts' : 'account_saved_texts';
+                        localStorage.setItem(storageKey, JSON.stringify(currentList));
                         renderDisplay();
                     }
                 });
@@ -109,22 +123,41 @@
             }
         }
 
+        // ฟังก์ชันสลับแท็บไปมา
+        function switchTab(tabName) {
+            currentTab = tabName;
+            
+            const btnGeneral = document.getElementById('tab-general');
+            const btnAccount = document.getElementById('tab-account');
+            
+            if (tabName === 'general') {
+                btnGeneral.className = "flex-1 py-3 border-b-2 border-sky-500 text-sky-400 transition-all";
+                btnAccount.className = "flex-1 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all";
+            } else {
+                btnAccount.className = "flex-1 py-3 border-b-2 border-sky-500 text-sky-400 transition-all";
+                btnGeneral.className = "flex-1 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all";
+            }
+            
+            renderDisplay();
+        }
+
         // ฟังก์ชันสั่งเซฟข้อความ
         function saveText() {
             const input = document.getElementById('text-input');
             const val = input.value.trim();
             if (!val) return;
 
-            savedTexts.push(val);
-            localStorage.setItem('quick_saved_texts', JSON.stringify(savedTexts));
+            dataStore[currentTab].push(val);
+            
+            // เลือกเซฟลงพื้นที่ตามแท็บที่เปิดใช้งานอยู่
+            const storageKey = currentTab === 'general' ? 'quick_saved_texts' : 'account_saved_texts';
+            localStorage.setItem(storageKey, JSON.stringify(dataStore[currentTab]));
+            
             input.value = '';
             renderDisplay();
-            
-            // เลื่อนหน้าจอขึ้นบนสุด
             document.getElementById('list-container').scrollTop = 0;
         }
 
-        // ฟังก์ชันแสดงแจ้งเตือน Copy
         function showToast() {
             const toast = document.getElementById('toast');
             toast.classList.remove('opacity-0', 'pointer-events-none');
@@ -133,12 +166,10 @@
             }, 1500);
         }
 
-        // กด Enter ในช่องอินพุตแล้วกดเซฟได้เลย
         document.getElementById('text-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') saveText();
         });
 
-        // รันแสดงผลครั้งแรก
         renderDisplay();
     </script>
 </body>
