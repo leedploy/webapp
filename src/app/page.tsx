@@ -53,6 +53,9 @@ export default function Home() {
   const [deleteProfilePassword, setDeleteProfilePassword] = useState('');
   const [isDeletingProfile, setIsDeletingProfile] = useState(false);
 
+  // State สำหรับ Modal เลือกโปรไฟล์
+  const [showProfileSelectorModal, setShowProfileSelectorModal] = useState(false);
+
   useEffect(() => {
     const savedSettings = localStorage.getItem('profileSettings');
     if (savedSettings) {
@@ -343,28 +346,13 @@ export default function Home() {
           >
             <i className="fa-solid fa-user-circle mr-2"></i> โปรไฟล์ <i className="fa-solid fa-gear ml-1.5 text-[10px] opacity-70"></i>
           </button>
-          <select 
-            value={currentProfile}
-            onChange={(e) => {
-              if (e.target.value === 'NEW_PROFILE') {
-                setShowNewProfileModal(true);
-                setNewProfileName('');
-                setNewProfileHasAccount(true);
-              } else {
-                setCurrentProfile(e.target.value);
-                const hasAccount = profileSettings[e.target.value]?.hasAccount !== false;
-                if (!hasAccount && currentTab === 'account') {
-                  setCurrentTab('general');
-                }
-              }
-            }}
-            className="bg-slate-800 text-sky-400 text-sm font-bold border border-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:border-sky-500 cursor-pointer"
+          <button 
+            onClick={() => setShowProfileSelectorModal(true)}
+            className="bg-slate-800 text-sky-400 text-sm font-bold border border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:border-sky-500 cursor-pointer flex items-center gap-2 hover:bg-slate-700 transition-colors active:scale-95"
           >
-            {profilesList.map(p => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-            <option value="NEW_PROFILE" className="text-amber-400 font-bold">+ เพิ่มโปรไฟล์ใหม่...</option>
-          </select>
+            <span className="truncate max-w-[120px]">{currentProfile}</span>
+            <i className="fa-solid fa-chevron-down text-[10px]"></i>
+          </button>
         </div>
         <header className="p-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-sky-400">
@@ -753,6 +741,55 @@ export default function Home() {
                 className="flex-1 py-3 rounded-xl font-bold bg-rose-500 hover:bg-rose-600 text-slate-100 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
               >
                 {isDeletingProfile ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-trash-can"></i>} ลบถาวร
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal เลือกโปรไฟล์ (แทน Select แบบเดิม) */}
+      {showProfileSelectorModal && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-slate-800 border-t md:border border-slate-700 rounded-t-3xl md:rounded-2xl p-6 w-full max-w-sm shadow-2xl transform transition-all duration-300 max-h-[80vh] flex flex-col">
+            <div className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4 md:hidden"></div>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-sky-400 flex items-center">
+                <i className="fa-solid fa-user-circle mr-2"></i>เลือกโปรไฟล์
+              </h3>
+              <button onClick={() => setShowProfileSelectorModal(false)} className="text-slate-400 hover:text-slate-200 w-8 h-8 flex items-center justify-center bg-slate-900 rounded-full">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar py-2">
+              {profilesList.map(p => (
+                <button 
+                  key={p} 
+                  onClick={() => {
+                    setCurrentProfile(p);
+                    const hasAccount = profileSettings[p]?.hasAccount !== false;
+                    if (!hasAccount && currentTab === 'account') {
+                      setCurrentTab('general');
+                    }
+                    setShowProfileSelectorModal(false);
+                  }}
+                  className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all active:scale-95 ${currentProfile === p ? 'bg-sky-500/10 border-sky-500/50 text-sky-400' : 'bg-slate-900 border-slate-700/50 text-slate-200 hover:bg-slate-800'}`}
+                >
+                  <span className="font-bold truncate">{p}</span>
+                  {currentProfile === p && <i className="fa-solid fa-circle-check text-lg"></i>}
+                </button>
+              ))}
+              
+              <button 
+                onClick={() => {
+                  setShowProfileSelectorModal(false);
+                  setShowNewProfileModal(true);
+                  setNewProfileName('');
+                  setNewProfileHasAccount(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border border-dashed border-amber-500/50 bg-amber-500/5 text-amber-400 hover:bg-amber-500/10 transition-all active:scale-95 font-bold mt-4"
+              >
+                <i className="fa-solid fa-plus"></i> เพิ่มโปรไฟล์ใหม่...
               </button>
             </div>
           </div>
