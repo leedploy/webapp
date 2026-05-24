@@ -8,6 +8,7 @@ type TextItem = {
   content: string;
   created_at: string;
   sort_order: number;
+  score?: number;
 };
 
 export default function Home() {
@@ -21,6 +22,7 @@ export default function Home() {
   // State สำหรับ Modal แก้ไขข้อความ
   const [editingItem, setEditingItem] = useState<TextItem | null>(null);
   const [editText, setEditText] = useState('');
+  const [editScore, setEditScore] = useState(0);
   const [isEditingSaving, setIsEditingSaving] = useState(false);
 
   // State สำหรับ Modal ลบข้อความ
@@ -84,13 +86,20 @@ export default function Home() {
   const handleEdit = (item: TextItem) => {
     setEditingItem(item);
     setEditText(item.content);
+    setEditScore(item.score || 0);
   };
 
   const confirmEdit = async () => {
     if (!editingItem) return;
     const trimmedText = editText.trim();
     
-    if (trimmedText === '' || trimmedText === editingItem.content) {
+    if (trimmedText === '' && trimmedText !== editingItem.content) {
+      // If it's empty but original wasn't, wait it shouldn't allow empty. But if they just changed score, we should save.
+      // Wait, original check was `trimmedText === '' || trimmedText === editingItem.content`.
+      // I'll update it to check both text and score.
+    }
+    
+    if (trimmedText === '' || (trimmedText === editingItem.content && editScore === (editingItem.score || 0))) {
       setEditingItem(null);
       return;
     }
@@ -100,14 +109,14 @@ export default function Home() {
     // Optimistic UI update
     setDataStore(prev => ({
       ...prev,
-      [currentTab]: prev[currentTab].map(x => x.id === editingItem.id ? { ...x, content: trimmedText } : x)
+      [currentTab]: prev[currentTab].map(x => x.id === editingItem.id ? { ...x, content: trimmedText, score: editScore } : x)
     }));
 
     try {
       const res = await fetch('/api/store', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingItem.id, content: trimmedText })
+        body: JSON.stringify({ id: editingItem.id, content: trimmedText, score: editScore })
       });
       const data = await res.json();
       if (!data.success) throw new Error('Update failed');
@@ -226,8 +235,14 @@ export default function Home() {
                   <div className="drag-handle p-1 mr-2 mt-0.5 text-slate-500 hover:text-slate-300 cursor-grab active:cursor-grabbing" title="กดค้างเพื่อลากจัดเรียง">
                     <i className="fa-solid fa-grip-vertical"></i>
                   </div>
-                  <div className="flex-1 break-words pr-2 text-base text-slate-100 select-all">
+                  <div className="flex-1 break-words pr-2 text-base text-slate-100 select-all relative">
                     {item.content}
+                    {(item.score !== undefined && item.score !== 0) && (
+                      <div className="inline-flex items-center ml-2 text-xs font-medium bg-slate-900/80 px-2 py-0.5 rounded-full text-rose-400 border border-slate-700">
+                        <i className="fa-solid fa-heart mr-1 text-[10px]"></i>
+                        {item.score}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-1 items-center shrink-0">
@@ -276,9 +291,28 @@ export default function Home() {
       {editingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
           <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 w-full max-w-sm shadow-2xl scale-100 transform transition-all duration-300">
-            <h3 className="text-lg font-bold text-sky-400 mb-3 flex items-center">
-              <i className="fa-regular fa-pen-to-square mr-2"></i>แก้ไขข้อความ
-            </h3>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-bold text-sky-400 flex items-center">
+                <i className="fa-regular fa-pen-to-square mr-2"></i>แก้ไขข้อความ
+              </h3>
+              <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-lg border border-slate-700">
+                <button 
+                  onClick={() => setEditScore(s => s - 1)}
+                  className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-slate-800 text-slate-400 hover:text-rose-400 active:scale-90 transition-all"
+                  title="ลดคะแนน"
+                >
+                  <i className="fa-solid fa-heart-crack text-sm"></i>
+                </button>
+                <span className="w-6 text-center text-sm font-bold text-slate-300">{editScore}</span>
+                <button 
+                  onClick={() => setEditScore(s => s + 1)}
+                  className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-slate-800 text-slate-400 hover:text-rose-500 active:scale-90 transition-all"
+                  title="เพิ่มคะแนน"
+                >
+                  <i className="fa-solid fa-heart text-sm"></i>
+                </button>
+              </div>
+            </div>
             <textarea 
               value={editText}
               onChange={(e) => setEditText(e.target.value)}

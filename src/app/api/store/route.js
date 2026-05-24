@@ -22,6 +22,7 @@ async function initTable() {
   
   try {
     await pool.query('ALTER TABLE saved_texts ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;');
+    await pool.query('ALTER TABLE saved_texts ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0;');
   } catch (e) {}
 }
 
@@ -33,7 +34,13 @@ export async function GET() {
     const dataStore = { general: [], account: [] };
     rows.forEach(row => {
       if (dataStore[row.category]) {
-        dataStore[row.category].push({ id: row.id, content: row.content, created_at: row.created_at });
+        dataStore[row.category].push({ 
+          id: row.id, 
+          content: row.content, 
+          created_at: row.created_at,
+          sort_order: row.sort_order,
+          score: row.score || 0
+        });
       }
     });
     return NextResponse.json(dataStore);
@@ -75,12 +82,22 @@ export async function DELETE(req) {
 export async function PUT(req) {
   try {
     await initTable();
-    const { id, content } = await req.json();
-    if (!id || !content) {
+    const body = await req.json();
+    const { id, content, score } = body;
+    
+    if (!id || content === undefined) {
       return NextResponse.json({ error: 'Missing id or content' }, { status: 400 });
     }
-    const query = 'UPDATE saved_texts SET content = $1 WHERE id = $2 RETURNING *';
-    const { rows } = await pool.query(query, [content, id]);
+    
+    let query = 'UPDATE saved_texts SET content = $1 WHERE id = $2 RETURNING *';
+    let values = [content, id];
+    
+    if (score !== undefined) {
+      query = 'UPDATE saved_texts SET content = $1, score = $2 WHERE id = $3 RETURNING *';
+      values = [content, score, id];
+    }
+    
+    const { rows } = await pool.query(query, values);
     return NextResponse.json({ success: true, data: rows[0] });
   } catch (error) {
     return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
