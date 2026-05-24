@@ -53,22 +53,43 @@
     </div>
 
     <script>
-        // แยกแท็บสถานะปัจจุบัน (general = บันทึกทั่วไป, account = บัญชี)
         let currentTab = 'general';
-        
-        // แยก Object จัดเก็บข้อมูลออกจากกันชัดเจน
-        let dataStore = {
-            general: JSON.parse(localStorage.getItem('quick_saved_texts')) || [],
-            account: JSON.parse(localStorage.getItem('account_saved_texts')) || []
-        };
+        let dataStore = { general: [], account: [] };
+        let isLoading = false;
+
+        // ฟังก์ชันดึงข้อมูลจากฐานข้อมูล
+        async function fetchTexts() {
+            isLoading = true;
+            renderDisplay();
+            try {
+                const res = await fetch('/api/store');
+                const data = await res.json();
+                if (data.general) dataStore.general = data.general;
+                if (data.account) dataStore.account = data.account;
+            } catch (err) {
+                console.error("Failed to fetch texts", err);
+            }
+            isLoading = false;
+            renderDisplay();
+        }
 
         function renderDisplay() {
             const container = document.getElementById('list-container');
             const countBadge = document.getElementById('item-count');
             container.innerHTML = '';
             
-            // ดึงข้อมูลตามแท็บที่เลือกอยู่ปัจจุบัน
-            const currentList = dataStore[currentTab];
+            if (isLoading) {
+                countBadge.innerText = `กำลังโหลด...`;
+                container.innerHTML = `
+                    <div class="text-center py-12 text-slate-500">
+                        <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-3 block text-sky-500"></i>
+                        <p class="text-sm">กำลังเชื่อมต่อฐานข้อมูล...</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const currentList = dataStore[currentTab] || [];
             countBadge.innerText = `${currentList.length} รายการ`;
 
             if (currentList.length === 0) {
@@ -83,7 +104,7 @@
 
             // แสดงรายการจากใหม่ไปเก่า
             for (let i = currentList.length - 1; i >= 0; i--) {
-                const itemText = currentList[i];
+                const item = currentList[i];
                 const card = document.createElement('div');
                 card.className = "bg-slate-800 border border-slate-700/50 rounded-xl p-4 flex justify-between items-start gap-3 shadow-md";
                 
@@ -99,23 +120,29 @@
                     </div>
                 `;
 
-                card.querySelector('.flex-1').textContent = itemText;
+                card.querySelector('.flex-1').textContent = item.content;
 
                 // เหตุการณ์กดก๊อปปี้
                 card.querySelector('.copy-btn').addEventListener('click', function() {
-                    navigator.clipboard.writeText(itemText).then(() => {
+                    navigator.clipboard.writeText(item.content).then(() => {
                         showToast();
                     });
                 });
 
                 // เหตุการณ์กดลบ
-                card.querySelector('.delete-btn').addEventListener('click', function() {
+                card.querySelector('.delete-btn').addEventListener('click', async function() {
                     if (confirm('คุณพี่ลีดต้องการลบข้อความนี้ใช่ไหมคะ?')) {
-                        currentList.splice(i, 1);
-                        // เซฟแยกตามคีย์ของแท็บตัวเอง
-                        const storageKey = currentTab === 'general' ? 'quick_saved_texts' : 'account_saved_texts';
-                        localStorage.setItem(storageKey, JSON.stringify(currentList));
+                        // ลบออกจากหน้าจอก่อน (Optimistic UI update)
+                        dataStore[currentTab].splice(i, 1);
                         renderDisplay();
+                        
+                        try {
+                            // สั่งลบจากฐานข้อมูลของจริง
+                            await fetch('/api/store?id=' + item.id, { method: 'DELETE' });
+                        } catch(e) {
+                            console.error('Delete failed', e);
+                            fetchTexts(); // โหลดใหม่ถ้าลบพลาด
+                        }
                     }
                 });
 
@@ -142,20 +169,37 @@
         }
 
         // ฟังก์ชันสั่งเซฟข้อความ
-        function saveText() {
+        async function saveText() {
             const input = document.getElementById('text-input');
             const val = input.value.trim();
             if (!val) return;
 
-            dataStore[currentTab].push(val);
+            // ปิดช่องพิมพ์ชั่วคราวตอนกำลังเซฟ
+            input.disabled = true;
             
-            // เลือกเซฟลงพื้นที่ตามแท็บที่เปิดใช้งานอยู่
-            const storageKey = currentTab === 'general' ? 'quick_saved_texts' : 'account_saved_texts';
-            localStorage.setItem(storageKey, JSON.stringify(dataStore[currentTab]));
+            try {
+                // ส่งข้อมูลไปบันทึกที่ฐานข้อมูล
+                const res = await fetch('/api/store', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category: currentTab, content: val })
+                });
+                const data = await res.json();
+                
+                if (data.success && data.data) {
+                    if (!dataStore[currentTab]) dataStore[currentTab] = [];
+                    dataStore[currentTab].push(data.data); // เพิ่มข้อมูลที่ได้จาก API (มี id แล้ว) ลงจอ
+                    input.value = '';
+                    renderDisplay();
+                    document.getElementById('list-container').scrollTop = 0;
+                }
+            } catch (err) {
+                console.error("Save failed", err);
+                alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่");
+            }
             
-            input.value = '';
-            renderDisplay();
-            document.getElementById('list-container').scrollTop = 0;
+            input.disabled = false;
+            input.focus();
         }
 
         function showToast() {
@@ -170,7 +214,8 @@
             if (e.key === 'Enter') saveText();
         });
 
-        renderDisplay();
+        // โหลดข้อมูลครั้งแรกเมื่อเปิดเว็บ
+        fetchTexts();
     </script>
 </body>
 </html>
