@@ -38,6 +38,21 @@ export default function Home() {
   const [newProfileName, setNewProfileName] = useState('');
   const [newProfileHasAccount, setNewProfileHasAccount] = useState(true);
 
+  // State สำหรับจัดการโปรไฟล์ (Manage Profiles)
+  const [showManageProfilesModal, setShowManageProfilesModal] = useState(false);
+  
+  // State สำหรับเปลี่ยนชื่อโปรไฟล์
+  const [showRenameProfileModal, setShowRenameProfileModal] = useState(false);
+  const [renamingProfile, setRenamingProfile] = useState('');
+  const [newProfileNameRename, setNewProfileNameRename] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+
+  // State สำหรับลบโปรไฟล์
+  const [showDeleteProfileModal, setShowDeleteProfileModal] = useState(false);
+  const [deletingProfileName, setDeletingProfileName] = useState('');
+  const [deleteProfilePassword, setDeleteProfilePassword] = useState('');
+  const [isDeletingProfile, setIsDeletingProfile] = useState(false);
+
   useEffect(() => {
     const savedSettings = localStorage.getItem('profileSettings');
     if (savedSettings) {
@@ -119,6 +134,83 @@ export default function Home() {
       setCurrentTab('general');
     }
     setShowNewProfileModal(false);
+  };
+
+  const handleRenameProfile = async () => {
+    const newName = newProfileNameRename.trim();
+    if (!newName || newName === renamingProfile || profilesList.includes(newName)) return;
+    
+    setIsRenaming(true);
+    try {
+      await fetch('/api/store', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'rename_profile', oldName: renamingProfile, newName })
+      });
+      
+      setProfilesList(prev => prev.map(p => p === renamingProfile ? newName : p));
+      if (currentProfile === renamingProfile) {
+        setCurrentProfile(newName);
+      }
+      setDataStore(prev => {
+        const newData = { ...prev };
+        newData[newName] = newData[renamingProfile] || { general: [], account: [] };
+        delete newData[renamingProfile];
+        return newData;
+      });
+      
+      const newSettings = { ...profileSettings };
+      if (newSettings[renamingProfile]) {
+        newSettings[newName] = newSettings[renamingProfile];
+        delete newSettings[renamingProfile];
+        setProfileSettings(newSettings);
+        localStorage.setItem('profileSettings', JSON.stringify(newSettings));
+      }
+      
+      setShowRenameProfileModal(false);
+    } catch (e) {
+      console.error(e);
+      alert('เกิดข้อผิดพลาดในการเปลี่ยนชื่อ');
+    }
+    setIsRenaming(false);
+  };
+
+  const handleDeleteProfile = async () => {
+    if (deleteProfilePassword !== '018664499') {
+      alert('รหัสผ่านไม่ถูกต้องค่ะ!');
+      return;
+    }
+    setIsDeletingProfile(true);
+    try {
+      await fetch(`/api/store?profile=${encodeURIComponent(deletingProfileName)}`, { method: 'DELETE' });
+      
+      const remaining = profilesList.filter(p => p !== deletingProfileName);
+      setProfilesList(remaining);
+      
+      if (currentProfile === deletingProfileName) {
+        setCurrentProfile(remaining.length > 0 ? remaining[0] : '');
+        setCurrentTab('general'); // Reset tab just in case
+      }
+      
+      setDataStore(prev => {
+        const newData = { ...prev };
+        delete newData[deletingProfileName];
+        return newData;
+      });
+      
+      const newSettings = { ...profileSettings };
+      delete newSettings[deletingProfileName];
+      setProfileSettings(newSettings);
+      localStorage.setItem('profileSettings', JSON.stringify(newSettings));
+      
+      setShowDeleteProfileModal(false);
+      setDeleteProfilePassword('');
+      if (remaining.length === 0) setShowManageProfilesModal(false);
+    } catch (e) {
+      console.error(e);
+      alert('เกิดข้อผิดพลาดในการลบโปรไฟล์');
+    }
+    setIsDeletingProfile(false);
   };
 
   const handleEdit = (item: TextItem) => {
@@ -244,9 +336,13 @@ export default function Home() {
     <div className="text-slate-200 min-h-screen flex flex-col justify-between w-full md:max-w-3xl mx-auto bg-slate-900 shadow-2xl relative">
       <div className="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 sticky top-0 z-10">
         <div className="bg-slate-900 px-4 py-2 flex items-center justify-between border-b border-slate-700/50">
-          <div className="flex items-center text-sm text-slate-400 font-medium">
-            <i className="fa-solid fa-user-circle mr-2"></i> โปรไฟล์:
-          </div>
+          <button 
+            onClick={() => setShowManageProfilesModal(true)}
+            className="flex items-center text-sm text-sky-400 font-bold hover:text-sky-300 transition-colors active:scale-95 bg-slate-800/50 px-2 py-1 rounded-lg border border-slate-700/50"
+            title="จัดการโปรไฟล์"
+          >
+            <i className="fa-solid fa-user-circle mr-2"></i> โปรไฟล์ <i className="fa-solid fa-gear ml-1.5 text-[10px] opacity-70"></i>
+          </button>
           <select 
             value={currentProfile}
             onChange={(e) => {
@@ -527,6 +623,136 @@ export default function Home() {
                 className="flex-1 py-3 rounded-xl font-bold bg-sky-500 hover:bg-sky-600 text-slate-950 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
               >
                 <i className="fa-solid fa-plus"></i> สร้างเลย
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal จัดการโปรไฟล์ (Manage Profiles) */}
+      {showManageProfilesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl scale-100 transform transition-all duration-300 max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-sky-400 flex items-center">
+                <i className="fa-solid fa-users-gear mr-2"></i>จัดการโปรไฟล์
+              </h3>
+              <button onClick={() => setShowManageProfilesModal(false)} className="text-slate-400 hover:text-slate-200 p-2">
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar">
+              {profilesList.map(p => (
+                <div key={p} className="flex justify-between items-center bg-slate-900 border border-slate-700/50 rounded-xl p-3">
+                  <span className="text-slate-200 font-medium truncate flex-1 pr-2">{p}</span>
+                  <div className="flex gap-1 shrink-0">
+                    <button 
+                      onClick={() => {
+                        setRenamingProfile(p);
+                        setNewProfileNameRename(p);
+                        setShowRenameProfileModal(true);
+                      }}
+                      className="p-2 text-amber-400 hover:text-amber-300 bg-slate-800 rounded-lg active:scale-95 transition-all"
+                      title="เปลี่ยนชื่อ"
+                    >
+                      <i className="fa-regular fa-pen-to-square text-sm"></i>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setDeletingProfileName(p);
+                        setDeleteProfilePassword('');
+                        setShowDeleteProfileModal(true);
+                      }}
+                      className="p-2 text-slate-500 hover:text-rose-400 bg-slate-800 rounded-lg active:scale-95 transition-all"
+                      title="ลบโปรไฟล์"
+                    >
+                      <i className="fa-regular fa-trash-can text-sm"></i>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal เปลี่ยนชื่อโปรไฟล์ */}
+      {showRenameProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl scale-100 transform transition-all duration-300">
+            <h3 className="text-xl font-bold text-amber-400 mb-4 flex items-center">
+              <i className="fa-solid fa-pen-nib mr-2"></i>เปลี่ยนชื่อโปรไฟล์
+            </h3>
+            
+            <div className="mb-6">
+              <input 
+                type="text" 
+                value={newProfileNameRename}
+                onChange={(e) => setNewProfileNameRename(e.target.value)}
+                autoFocus
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-amber-500 text-base"
+                placeholder="ชื่อใหม่..."
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowRenameProfileModal(false)}
+                disabled={isRenaming}
+                className="flex-1 py-3 rounded-xl font-medium text-slate-300 bg-slate-700 hover:bg-slate-600 transition-colors disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button 
+                onClick={handleRenameProfile}
+                disabled={isRenaming || !newProfileNameRename.trim() || newProfileNameRename === renamingProfile}
+                className="flex-1 py-3 rounded-xl font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+              >
+                {isRenaming ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-check"></i>} บันทึก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal ลบโปรไฟล์ */}
+      {showDeleteProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-slate-800 border border-rose-500/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl scale-100 transform transition-all duration-300">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mb-4 text-rose-500 text-3xl">
+                <i className="fa-solid fa-skull-crossbones"></i>
+              </div>
+              <h3 className="text-xl font-bold text-slate-100 mb-2">ลบโปรไฟล์ {deletingProfileName}?</h3>
+              <p className="text-slate-400 text-sm mb-4">ข้อมูลทั้งหมดในโปรไฟล์นี้จะหายไปตลอดกาล<br/>กรุณาใส่รหัสผ่านเพื่อยืนยัน</p>
+            </div>
+            
+            <div className="mb-6">
+              <input 
+                type="password" 
+                value={deleteProfilePassword}
+                onChange={(e) => setDeleteProfilePassword(e.target.value)}
+                autoFocus
+                className="w-full bg-slate-900 border border-rose-500/50 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-rose-500 text-base text-center tracking-widest"
+                placeholder="รหัสผ่านยืนยัน"
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowDeleteProfileModal(false)}
+                disabled={isDeletingProfile}
+                className="flex-1 py-3 rounded-xl font-medium text-slate-300 bg-slate-700 hover:bg-slate-600 transition-colors disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button 
+                onClick={handleDeleteProfile}
+                disabled={isDeletingProfile || !deleteProfilePassword}
+                className="flex-1 py-3 rounded-xl font-bold bg-rose-500 hover:bg-rose-600 text-slate-100 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+              >
+                {isDeletingProfile ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-trash-can"></i>} ลบถาวร
               </button>
             </div>
           </div>

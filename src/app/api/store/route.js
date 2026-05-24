@@ -73,6 +73,14 @@ export async function DELETE(req) {
   try {
     await initTable();
     const id = req.nextUrl.searchParams.get('id');
+    const profile = req.nextUrl.searchParams.get('profile');
+    
+    if (profile) {
+      const query = 'DELETE FROM saved_texts WHERE profile = $1 RETURNING *';
+      const { rows } = await pool.query(query, [profile]);
+      return NextResponse.json({ success: true, deletedCount: rows.length });
+    }
+    
     if (!id) {
       return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     }
@@ -112,7 +120,17 @@ export async function PUT(req) {
 export async function PATCH(req) {
   try {
     await initTable();
-    const updates = await req.json();
+    const body = await req.json();
+    
+    if (body.action === 'rename_profile') {
+      const { oldName, newName } = body;
+      if (!oldName || !newName) return NextResponse.json({ error: 'Missing names' }, { status: 400 });
+      const query = 'UPDATE saved_texts SET profile = $1 WHERE profile = $2 RETURNING *';
+      const { rows } = await pool.query(query, [newName, oldName]);
+      return NextResponse.json({ success: true, updatedCount: rows.length });
+    }
+
+    const updates = body;
     if (!Array.isArray(updates)) {
       return NextResponse.json({ error: 'Expected an array of updates' }, { status: 400 });
     }
