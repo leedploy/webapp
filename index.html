@@ -12,7 +12,6 @@
             background-color: #0f172a;
             -webkit-tap-highlight-color: transparent;
         }
-        /* ซ่อน Scrollbar ของตัวรายการเพื่อความคลีนแบบแอปมือถือ */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -43,8 +42,13 @@
     </div>
 
     <script>
-        // ดึงข้อมูลเก่าที่เคยเซฟไว้ในเครื่องมาแสดงผล
+        // ดึงข้อมูลเก่าจาก LocalStorage
         let savedTexts = JSON.parse(localStorage.getItem('quick_saved_texts')) || [];
+
+        // ฟังก์ชันล้างข้อความเพื่อความปลอดภัยแบบเรียบง่าย
+        function safeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
 
         function renderDisplay() {
             const container = document.getElementById('list-container');
@@ -57,4 +61,85 @@
                 container.innerHTML = `
                     <div class="text-center py-12 text-slate-500">
                         <i class="fa-regular fa-clipboard text-4xl mb-3 block"></i>
-                        <p class
+                        <p class="text-sm">ยังไม่มีข้อความที่บันทึกไว้ค่ะ</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // วนลูปแสดงข้อความจากใหม่ไปเก่า
+            for (let i = savedTexts.length - 1; i >= 0; i--) {
+                const itemText = savedTexts[i];
+                const card = document.createElement('div');
+                card.className = "bg-slate-800 border border-slate-700/50 rounded-xl p-4 flex justify-between items-start gap-3 shadow-md";
+                
+                // สร้างเนื้อหาข้างในการ์ด
+                card.innerHTML = `
+                    <div class="flex-1 break-words pr-2 text-base text-slate-100 select-all"></div>
+                    <div class="flex gap-1 items-center shrink-0">
+                        <button class="copy-btn p-2.5 text-sky-400 hover:text-sky-300 active:scale-90 transition-all bg-slate-900 rounded-lg">
+                            <i class="fa-regular fa-copy text-lg"></i>
+                        </button>
+                        <button class="delete-btn p-2.5 text-slate-500 hover:text-rose-400 active:scale-90 transition-all">
+                            <i class="fa-regular fa-trash-can text-sm"></i>
+                        </button>
+                    </div>
+                `;
+
+                // ใช้ textContent เพื่อความปลอดภัยและรองรับการเว้นวรรค/อักขระพิเศษได้ 100%
+                card.querySelector('.flex-1').textContent = itemText;
+
+                // ผูกเหตุการณ์ปุ่ม Copy
+                card.querySelector('.copy-btn').addEventListener('click', function() {
+                    navigator.clipboard.writeText(itemText).then(() => {
+                        showToast();
+                    });
+                });
+
+                // ผูกเหตุการณ์ปุ่ม ลบ
+                card.querySelector('.delete-btn').addEventListener('click', function() {
+                    if (confirm('คุณพี่ลีดต้องการลบข้อความนี้ใช่ไหมคะ?')) {
+                        savedTexts.splice(i, 1);
+                        localStorage.setItem('quick_saved_texts', JSON.stringify(savedTexts));
+                        renderDisplay();
+                    }
+                });
+
+                container.appendChild(card);
+            }
+        }
+
+        // ฟังก์ชันสั่งเซฟข้อความ
+        function saveText() {
+            const input = document.getElementById('text-input');
+            const val = input.value.trim();
+            if (!val) return;
+
+            savedTexts.push(val);
+            localStorage.setItem('quick_saved_texts', JSON.stringify(savedTexts));
+            input.value = '';
+            renderDisplay();
+            
+            // เลื่อนหน้าจอขึ้นบนสุด
+            document.getElementById('list-container').scrollTop = 0;
+        }
+
+        // ฟังก์ชันแสดงแจ้งเตือน Copy
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 1500);
+        }
+
+        // กด Enter ในช่องอินพุตแล้วกดเซฟได้เลย
+        document.getElementById('text-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') saveText();
+        });
+
+        // รันแสดงผลครั้งแรก
+        renderDisplay();
+    </script>
+</body>
+</html>
