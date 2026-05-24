@@ -418,14 +418,14 @@ export default function Home() {
             className="space-y-3"
           >
             {displayList.map(item => (
-              <div key={item.id} className="bg-slate-800 border border-slate-700/50 rounded-xl p-4 flex justify-between items-start gap-3 shadow-md">
+              <div key={item.id} className="bg-slate-800 border border-slate-700/50 rounded-xl p-4 flex justify-between items-start gap-4 shadow-md relative">
                 <div className="flex items-start flex-1 min-w-0">
                   {sortMode === 'manual' && (
                     <div className="drag-handle p-1 mr-2 mt-0.5 text-slate-500 hover:text-slate-300 cursor-grab active:cursor-grabbing" title="กดค้างเพื่อลากจัดเรียง">
                       <i className="fa-solid fa-grip-vertical"></i>
                     </div>
                   )}
-                  <div className={`flex-1 break-words pr-2 text-base text-slate-100 select-all relative ${sortMode !== 'manual' ? 'pl-2' : ''}`}>
+                  <div className={`flex-1 break-words pr-2 text-base text-slate-100 select-text relative ${sortMode !== 'manual' ? 'pl-2' : ''}`}>
                     {item.content}
                     {(item.score !== undefined && item.score !== 0) && (
                       <div className="inline-flex items-center ml-2 text-xs font-medium bg-slate-900/80 px-2 py-0.5 rounded-full text-rose-400 border border-slate-700">
@@ -435,7 +435,7 @@ export default function Home() {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-1 items-center shrink-0">
+                <div className="flex gap-1 items-center shrink-0 z-10 relative">
                   <button onClick={() => handleCopy(item.content)} className="p-2.5 text-sky-400 hover:text-sky-300 active:scale-90 transition-all bg-slate-900 rounded-lg" title="คัดลอก">
                     <i className="fa-regular fa-copy text-lg"></i>
                   </button>
