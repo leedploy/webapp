@@ -1,0 +1,8 @@
+{
+  "name": "quick-text-saver",
+  "version": "1.0.0",
+  "description": "Quick Text Saver with Vercel and Neon Postgres",
+  "dependencies": {
+    "pg": "^8.11.3"
+  }
+}
