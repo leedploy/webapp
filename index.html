@@ -6,6 +6,7 @@
     <title>Quick Text Saver</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -102,25 +103,61 @@
                 return;
             }
 
-            // แสดงรายการจากใหม่ไปเก่า
-            for (let i = currentList.length - 1; i >= 0; i--) {
+            // แสดงรายการจากบนลงล่าง (เพราะฐานข้อมูลเรียงมาให้แล้ว)
+            for (let i = 0; i < currentList.length; i++) {
                 const item = currentList[i];
                 const card = document.createElement('div');
                 card.className = "bg-slate-800 border border-slate-700/50 rounded-xl p-4 flex justify-between items-start gap-3 shadow-md";
+                card.dataset.id = item.id; // ฝัง id ไว้สำหรับจับลำดับ
                 
                 card.innerHTML = `
-                    <div class="flex-1 break-words pr-2 text-base text-slate-100 select-all"></div>
+                    <div class="flex items-start flex-1 min-w-0">
+                        <div class="drag-handle p-1 mr-2 mt-0.5 text-slate-500 hover:text-slate-300 cursor-grab active:cursor-grabbing" title="กดค้างเพื่อลากจัดเรียง">
+                            <i class="fa-solid fa-grip-vertical"></i>
+                        </div>
+                        <div class="flex-1 break-words pr-2 text-base text-slate-100 select-all content-text"></div>
+                    </div>
                     <div class="flex gap-1 items-center shrink-0">
-                        <button class="copy-btn p-2.5 text-sky-400 hover:text-sky-300 active:scale-90 transition-all bg-slate-900 rounded-lg">
+                        <button class="copy-btn p-2.5 text-sky-400 hover:text-sky-300 active:scale-90 transition-all bg-slate-900 rounded-lg" title="คัดลอก">
                             <i class="fa-regular fa-copy text-lg"></i>
                         </button>
-                        <button class="delete-btn p-2.5 text-slate-500 hover:text-rose-400 active:scale-90 transition-all">
+                        <button class="edit-btn p-2.5 text-amber-400 hover:text-amber-300 active:scale-90 transition-all bg-slate-900 rounded-lg" title="แก้ไข">
+                            <i class="fa-regular fa-pen-to-square text-sm"></i>
+                        </button>
+                        <button class="delete-btn p-2.5 text-slate-500 hover:text-rose-400 active:scale-90 transition-all" title="ลบ">
                             <i class="fa-regular fa-trash-can text-sm"></i>
                         </button>
                     </div>
                 `;
 
-                card.querySelector('.flex-1').textContent = item.content;
+                card.querySelector('.content-text').textContent = item.content;
+
+                // เหตุการณ์กดแก้ไข
+                card.querySelector('.edit-btn').addEventListener('click', async function() {
+                    const newText = prompt('แก้ไขข้อความ:', item.content);
+                    if (newText !== null && newText.trim() !== '' && newText !== item.content) {
+                        const trimmedText = newText.trim();
+                        // แสดงข้อความใหม่บนจอก่อนทันที (Optimistic UI update)
+                        const oldContent = item.content;
+                        item.content = trimmedText;
+                        renderDisplay();
+                        
+                        try {
+                            const res = await fetch('/api/store', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: item.id, content: trimmedText })
+                            });
+                            const data = await res.json();
+                            if (!data.success) throw new Error('Update failed');
+                        } catch(e) {
+                            console.error('Edit failed', e);
+                            item.content = oldContent; // ถ้าพังให้คืนค่าเดิม
+                            renderDisplay();
+                            alert("เกิดข้อผิดพลาดในการแก้ไขข้อมูล");
+                        }
+                    }
+                });
 
                 // เหตุการณ์กดก๊อปปี้
                 card.querySelector('.copy-btn').addEventListener('click', function() {
@@ -148,6 +185,47 @@
 
                 container.appendChild(card);
             }
+
+            // เริ่มต้นระบบ Drag & Drop
+            if (window.sortableInstance) {
+                window.sortableInstance.destroy();
+            }
+            window.sortableInstance = new Sortable(container, {
+                handle: '.drag-handle', // กำหนดให้ต้องจับที่ไอคอน 3 ขีดเท่านั้นถึงลากได้
+                animation: 150,
+                delay: 200, // สำหรับมือถือ ต้องแตะค้าง 0.2 วิ ถึงลากได้ ป้องกันการเลื่อนจอลั่น
+                delayOnTouchOnly: true,
+                onEnd: async function (evt) {
+                    const itemEls = container.children;
+                    const updates = [];
+                    const newCurrentList = [];
+                    
+                    // อัปเดตลำดับใหม่ทั้งหมด
+                    for (let i = 0; i < itemEls.length; i++) {
+                        const id = parseInt(itemEls[i].dataset.id);
+                        updates.push({ id: id, sort_order: i });
+                        
+                        const item = currentList.find(x => x.id === id);
+                        if (item) newCurrentList.push(item);
+                    }
+                    
+                    // จัดเก็บลำดับใหม่ในตัวแปรทันที
+                    dataStore[currentTab] = newCurrentList;
+
+                    // ส่งอัปเดตไปที่ฐานข้อมูลแบบเงียบๆ
+                    try {
+                        await fetch('/api/store', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(updates)
+                        });
+                    } catch (e) {
+                        console.error('Save order failed', e);
+                        alert("อัปเดตลำดับลงฐานข้อมูลล้มเหลว กรุณาลองใหม่");
+                        fetchTexts(); // โหลดใหม่เพื่อคืนค่าเดิม
+                    }
+                }
+            });
         }
 
         // ฟังก์ชันสลับแท็บไปมา
@@ -188,7 +266,7 @@
                 
                 if (data.success && data.data) {
                     if (!dataStore[currentTab]) dataStore[currentTab] = [];
-                    dataStore[currentTab].push(data.data); // เพิ่มข้อมูลที่ได้จาก API (มี id แล้ว) ลงจอ
+                    dataStore[currentTab].unshift(data.data); // ใช้ unshift เพื่อดันให้อยู่บนสุด
                     input.value = '';
                     renderDisplay();
                     document.getElementById('list-container').scrollTop = 0;
