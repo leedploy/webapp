@@ -189,7 +189,7 @@ export default function Home() {
   });
 
   return (
-    <div className="text-slate-200 min-h-screen flex flex-col justify-between max-w-md mx-auto bg-slate-900 shadow-2xl relative">
+    <div className="text-slate-200 min-h-screen flex flex-col justify-between w-full md:max-w-3xl mx-auto bg-slate-900 shadow-2xl relative">
       <div className="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 sticky top-0 z-10">
         <header className="p-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-sky-400">
@@ -283,7 +283,7 @@ export default function Home() {
         )}
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-800/95 backdrop-blur-md border-t border-slate-700 p-4 pb-6 z-20">
+      <div className="fixed bottom-0 md:bottom-6 left-0 right-0 w-full md:max-w-3xl mx-auto bg-slate-800/95 backdrop-blur-md border-t md:border md:rounded-2xl border-slate-700 p-4 pb-6 md:pb-4 z-20 shadow-xl">
         <div className="flex gap-2">
           <input 
             type="text" 
