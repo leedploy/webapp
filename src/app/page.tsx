@@ -14,7 +14,9 @@ type TextItem = {
 export default function Home() {
   const [currentTab, setCurrentTab] = useState<'general' | 'account'>('general');
   const [sortMode, setSortMode] = useState<'manual' | 'score'>('manual');
-  const [dataStore, setDataStore] = useState<{ general: TextItem[]; account: TextItem[] }>({ general: [], account: [] });
+  const [currentProfile, setCurrentProfile] = useState<string>('Grok imagine');
+  const [profilesList, setProfilesList] = useState<string[]>(['Grok imagine']);
+  const [dataStore, setDataStore] = useState<Record<string, { general: TextItem[]; account: TextItem[] }>>({ 'Grok imagine': { general: [], account: [] } });
   const [isLoading, setIsLoading] = useState(true);
   const [inputText, setInputText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -40,10 +42,11 @@ export default function Home() {
       const res = await fetch('/api/store');
       const data = await res.json();
       if (!data.error) {
-        setDataStore({
-          general: data.general || [],
-          account: data.account || []
-        });
+        if (!data['Grok imagine']) {
+          data['Grok imagine'] = { general: [], account: [] };
+        }
+        setDataStore(data);
+        setProfilesList(Object.keys(data));
       }
     } catch (err) {
       console.error("Failed to fetch texts", err);
@@ -70,7 +73,10 @@ export default function Home() {
     // Optimistic UI update
     setDataStore(prev => ({
       ...prev,
-      [currentTab]: prev[currentTab].filter(item => item.id !== deletingItemId)
+      [currentProfile]: {
+        ...prev[currentProfile],
+        [currentTab]: prev[currentProfile][currentTab].filter(item => item.id !== deletingItemId)
+      }
     }));
     
     try {
@@ -110,7 +116,10 @@ export default function Home() {
     // Optimistic UI update
     setDataStore(prev => ({
       ...prev,
-      [currentTab]: prev[currentTab].map(x => x.id === editingItem.id ? { ...x, content: trimmedText, score: editScore } : x)
+      [currentProfile]: {
+        ...prev[currentProfile],
+        [currentTab]: prev[currentProfile][currentTab].map(x => x.id === editingItem.id ? { ...x, content: trimmedText, score: editScore } : x)
+      }
     }));
 
     try {
@@ -139,14 +148,20 @@ export default function Home() {
       const res = await fetch('/api/store', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category: currentTab, content: val })
+        body: JSON.stringify({ category: currentTab, content: val, profile: currentProfile })
       });
       const data = await res.json();
       if (data.success && data.data) {
-        setDataStore(prev => ({
-          ...prev,
-          [currentTab]: [data.data, ...prev[currentTab]]
-        }));
+        setDataStore(prev => {
+          const profData = prev[currentProfile] || { general: [], account: [] };
+          return {
+            ...prev,
+            [currentProfile]: {
+              ...profData,
+              [currentTab]: [data.data, ...(profData[currentTab] || [])]
+            }
+          };
+        });
         setInputText('');
       }
     } catch (err) {
@@ -158,7 +173,13 @@ export default function Home() {
 
   const handleSort = async (newState: TextItem[]) => {
     // อัปเดต State ให้ UI ขยับตาม
-    setDataStore(prev => ({ ...prev, [currentTab]: newState }));
+    setDataStore(prev => ({ 
+      ...prev, 
+      [currentProfile]: {
+        ...prev[currentProfile],
+        [currentTab]: newState
+      }
+    }));
     
     // สร้าง Array ของลำดับใหม่
     const updates = newState.map((item, index) => ({
@@ -179,7 +200,7 @@ export default function Home() {
     }
   };
 
-  const currentList = dataStore[currentTab] || [];
+  const currentList = dataStore[currentProfile]?.[currentTab] || [];
   
   const displayList = [...currentList].sort((a, b) => {
     if (sortMode === 'score') {
@@ -191,6 +212,35 @@ export default function Home() {
   return (
     <div className="text-slate-200 min-h-screen flex flex-col justify-between w-full md:max-w-3xl mx-auto bg-slate-900 shadow-2xl relative">
       <div className="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 sticky top-0 z-10">
+        <div className="bg-slate-900 px-4 py-2 flex items-center justify-between border-b border-slate-700/50">
+          <div className="flex items-center text-sm text-slate-400 font-medium">
+            <i className="fa-solid fa-user-circle mr-2"></i> โปรไฟล์:
+          </div>
+          <select 
+            value={currentProfile}
+            onChange={(e) => {
+              if (e.target.value === 'NEW_PROFILE') {
+                const newName = prompt('ชื่อโปรไฟล์ใหม่:');
+                if (newName && newName.trim()) {
+                  const name = newName.trim();
+                  if (!profilesList.includes(name)) {
+                    setProfilesList(prev => [...prev, name]);
+                    setDataStore(prev => ({ ...prev, [name]: { general: [], account: [] } }));
+                  }
+                  setCurrentProfile(name);
+                }
+              } else {
+                setCurrentProfile(e.target.value);
+              }
+            }}
+            className="bg-slate-800 text-sky-400 text-sm font-bold border border-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:border-sky-500 cursor-pointer"
+          >
+            {profilesList.map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+            <option value="NEW_PROFILE" className="text-amber-400 font-bold">+ เพิ่มโปรไฟล์ใหม่...</option>
+          </select>
+        </div>
         <header className="p-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-sky-400">
             <i className="fa-solid fa-box-archive mr-2"></i>คลังบันทึกข้อความ

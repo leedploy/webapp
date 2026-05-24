@@ -23,6 +23,7 @@ async function initTable() {
   try {
     await pool.query('ALTER TABLE saved_texts ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;');
     await pool.query('ALTER TABLE saved_texts ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0;');
+    await pool.query("ALTER TABLE saved_texts ADD COLUMN IF NOT EXISTS profile VARCHAR(100) DEFAULT 'Grok imagine';");
   } catch (e) {}
 }
 
@@ -31,10 +32,14 @@ export async function GET() {
     await initTable();
     const { rows } = await pool.query('SELECT * FROM saved_texts ORDER BY sort_order ASC, created_at DESC');
     
-    const dataStore = { general: [], account: [] };
+    const dataStore = {};
     rows.forEach(row => {
-      if (dataStore[row.category]) {
-        dataStore[row.category].push({ 
+      const p = row.profile || 'Grok imagine';
+      if (!dataStore[p]) {
+        dataStore[p] = { general: [], account: [] };
+      }
+      if (dataStore[p][row.category]) {
+        dataStore[p][row.category].push({ 
           id: row.id, 
           content: row.content, 
           created_at: row.created_at,
@@ -52,12 +57,12 @@ export async function GET() {
 export async function POST(req) {
   try {
     await initTable();
-    const { category, content } = await req.json();
+    const { category, content, profile = 'Grok imagine' } = await req.json();
     if (!category || !content) {
       return NextResponse.json({ error: 'Missing category or content' }, { status: 400 });
     }
-    const query = 'INSERT INTO saved_texts (category, content) VALUES ($1, $2) RETURNING *';
-    const { rows } = await pool.query(query, [category, content]);
+    const query = 'INSERT INTO saved_texts (category, content, profile) VALUES ($1, $2, $3) RETURNING *';
+    const { rows } = await pool.query(query, [category, content, profile]);
     return NextResponse.json({ success: true, data: rows[0] });
   } catch (error) {
     return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
