@@ -13,6 +13,7 @@ type TextItem = {
 
 export default function Home() {
   const [currentTab, setCurrentTab] = useState<'general' | 'account'>('general');
+  const [sortMode, setSortMode] = useState<'manual' | 'score'>('manual');
   const [dataStore, setDataStore] = useState<{ general: TextItem[]; account: TextItem[] }>({ general: [], account: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [inputText, setInputText] = useState('');
@@ -179,6 +180,13 @@ export default function Home() {
   };
 
   const currentList = dataStore[currentTab] || [];
+  
+  const displayList = [...currentList].sort((a, b) => {
+    if (sortMode === 'score') {
+      return (b.score || 0) - (a.score || 0);
+    }
+    return 0; // manual order is preserved
+  });
 
   return (
     <div className="text-slate-200 min-h-screen flex flex-col justify-between max-w-md mx-auto bg-slate-900 shadow-2xl relative">
@@ -187,9 +195,19 @@ export default function Home() {
           <h1 className="text-xl font-bold text-sky-400">
             <i className="fa-solid fa-box-archive mr-2"></i>คลังบันทึกข้อความ
           </h1>
-          <span className="text-xs bg-slate-700 px-2.5 py-1 rounded-full text-slate-400">
-            {currentList.length} รายการ
-          </span>
+          <div className="flex items-center gap-2">
+            <select 
+              value={sortMode} 
+              onChange={(e) => setSortMode(e.target.value as 'manual' | 'score')}
+              className="bg-slate-900 text-xs text-slate-300 border border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-sky-500 cursor-pointer"
+            >
+              <option value="manual">เรียงตามลากวาง</option>
+              <option value="score">เรียงตามคะแนน</option>
+            </select>
+            <span className="text-xs bg-slate-700 px-2.5 py-1.5 rounded-lg text-slate-300 font-medium whitespace-nowrap">
+              {currentList.length} รายการ
+            </span>
+          </div>
         </header>
 
         <div className="flex border-t border-slate-700/60 text-center font-medium text-sm">
@@ -221,21 +239,24 @@ export default function Home() {
           </div>
         ) : (
           <ReactSortable 
-            list={currentList} 
-            setList={handleSort}
+            list={displayList} 
+            setList={sortMode === 'manual' ? handleSort : () => {}} // ป้องกันการเซฟตำแหน่งถ้าไม่ได้อยู่โหมด manual
+            disabled={sortMode === 'score'}
             handle=".drag-handle"
             animation={150}
             delay={200}
             delayOnTouchOnly={true}
             className="space-y-3"
           >
-            {currentList.map(item => (
+            {displayList.map(item => (
               <div key={item.id} className="bg-slate-800 border border-slate-700/50 rounded-xl p-4 flex justify-between items-start gap-3 shadow-md">
                 <div className="flex items-start flex-1 min-w-0">
-                  <div className="drag-handle p-1 mr-2 mt-0.5 text-slate-500 hover:text-slate-300 cursor-grab active:cursor-grabbing" title="กดค้างเพื่อลากจัดเรียง">
-                    <i className="fa-solid fa-grip-vertical"></i>
-                  </div>
-                  <div className="flex-1 break-words pr-2 text-base text-slate-100 select-all relative">
+                  {sortMode === 'manual' && (
+                    <div className="drag-handle p-1 mr-2 mt-0.5 text-slate-500 hover:text-slate-300 cursor-grab active:cursor-grabbing" title="กดค้างเพื่อลากจัดเรียง">
+                      <i className="fa-solid fa-grip-vertical"></i>
+                    </div>
+                  )}
+                  <div className={`flex-1 break-words pr-2 text-base text-slate-100 select-all relative ${sortMode !== 'manual' ? 'pl-2' : ''}`}>
                     {item.content}
                     {(item.score !== undefined && item.score !== 0) && (
                       <div className="inline-flex items-center ml-2 text-xs font-medium bg-slate-900/80 px-2 py-0.5 rounded-full text-rose-400 border border-slate-700">
