@@ -17,6 +17,7 @@ export default function Home() {
   const [currentProfile, setCurrentProfile] = useState<string>('Grok imagine');
   const [profilesList, setProfilesList] = useState<string[]>(['Grok imagine']);
   const [dataStore, setDataStore] = useState<Record<string, { general: TextItem[]; account: TextItem[] }>>({ 'Grok imagine': { general: [], account: [] } });
+  const [profileSettings, setProfileSettings] = useState<Record<string, { hasAccount: boolean }>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [inputText, setInputText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -32,7 +33,18 @@ export default function Home() {
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // State สำหรับ Modal สร้างโปรไฟล์
+  const [showNewProfileModal, setShowNewProfileModal] = useState(false);
+  const [newProfileName, setNewProfileName] = useState('');
+  const [newProfileHasAccount, setNewProfileHasAccount] = useState(true);
+
   useEffect(() => {
+    const savedSettings = localStorage.getItem('profileSettings');
+    if (savedSettings) {
+      try {
+        setProfileSettings(JSON.parse(savedSettings));
+      } catch (e) {}
+    }
     fetchTexts();
   }, []);
 
@@ -88,6 +100,25 @@ export default function Home() {
     
     setIsDeleting(false);
     setDeletingItemId(null);
+  };
+
+  const handleCreateProfile = () => {
+    const name = newProfileName.trim();
+    if (!name) return;
+    
+    const newSettings = { ...profileSettings, [name]: { hasAccount: newProfileHasAccount } };
+    setProfileSettings(newSettings);
+    localStorage.setItem('profileSettings', JSON.stringify(newSettings));
+    
+    if (!profilesList.includes(name)) {
+      setProfilesList(prev => [...prev, name]);
+      setDataStore(prev => ({ ...prev, [name]: { general: [], account: [] } }));
+    }
+    setCurrentProfile(name);
+    if (!newProfileHasAccount && currentTab === 'account') {
+      setCurrentTab('general');
+    }
+    setShowNewProfileModal(false);
   };
 
   const handleEdit = (item: TextItem) => {
@@ -220,17 +251,15 @@ export default function Home() {
             value={currentProfile}
             onChange={(e) => {
               if (e.target.value === 'NEW_PROFILE') {
-                const newName = prompt('ชื่อโปรไฟล์ใหม่:');
-                if (newName && newName.trim()) {
-                  const name = newName.trim();
-                  if (!profilesList.includes(name)) {
-                    setProfilesList(prev => [...prev, name]);
-                    setDataStore(prev => ({ ...prev, [name]: { general: [], account: [] } }));
-                  }
-                  setCurrentProfile(name);
-                }
+                setShowNewProfileModal(true);
+                setNewProfileName('');
+                setNewProfileHasAccount(true);
               } else {
                 setCurrentProfile(e.target.value);
+                const hasAccount = profileSettings[e.target.value]?.hasAccount !== false;
+                if (!hasAccount && currentTab === 'account') {
+                  setCurrentTab('general');
+                }
               }
             }}
             className="bg-slate-800 text-sky-400 text-sm font-bold border border-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:border-sky-500 cursor-pointer"
@@ -267,12 +296,14 @@ export default function Home() {
           >
             <i className="fa-regular fa-file-lines mr-1.5"></i>บันทึกทั่วไป
           </button>
-          <button 
-            onClick={() => setCurrentTab('account')} 
-            className={`flex-1 py-3 border-b-2 transition-all ${currentTab === 'account' ? 'border-sky-500 text-sky-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
-          >
-            <i className="fa-solid fa-wallet mr-1.5"></i>บัญชี
-          </button>
+          {profileSettings[currentProfile]?.hasAccount !== false && (
+            <button 
+              onClick={() => setCurrentTab('account')} 
+              className={`flex-1 py-3 border-b-2 transition-all ${currentTab === 'account' ? 'border-sky-500 text-sky-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+            >
+              <i className="fa-solid fa-wallet mr-1.5"></i>บัญชี
+            </button>
+          )}
         </div>
       </div>
 
@@ -439,6 +470,63 @@ export default function Home() {
               >
                 {isDeleting ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-trash-can"></i>}
                 ลบเลย
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal เพิ่มโปรไฟล์ใหม่ */}
+      {showNewProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl scale-100 transform transition-all duration-300">
+            <h3 className="text-xl font-bold text-sky-400 mb-4 flex items-center">
+              <i className="fa-solid fa-user-plus mr-2"></i>สร้างโปรไฟล์ใหม่
+            </h3>
+            
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">ชื่อโปรไฟล์</label>
+                <input 
+                  type="text" 
+                  value={newProfileName}
+                  onChange={(e) => setNewProfileName(e.target.value)}
+                  autoFocus
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-sky-500 text-base"
+                  placeholder="เช่น สายงาน, ไอเดียแต่งนิยาย..."
+                />
+              </div>
+              
+              <label className="flex items-center gap-3 p-3 border border-slate-700 rounded-xl bg-slate-900/50 cursor-pointer hover:bg-slate-900 transition-colors">
+                <div className="relative flex items-center">
+                  <input 
+                    type="checkbox" 
+                    checked={newProfileHasAccount}
+                    onChange={(e) => setNewProfileHasAccount(e.target.checked)}
+                    className="peer w-5 h-5 appearance-none rounded border border-slate-600 checked:bg-sky-500 checked:border-sky-500 transition-all"
+                  />
+                  <i className="fa-solid fa-check absolute inset-0 text-slate-900 text-xs flex items-center justify-center opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"></i>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-slate-200">เปิดใช้งานแท็บ "บัญชี"</span>
+                  <span className="text-xs text-slate-500">สำหรับบันทึกเลขบัญชีหรือข้อมูลสำคัญ</span>
+                </div>
+              </label>
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowNewProfileModal(false)}
+                className="flex-1 py-3 rounded-xl font-medium text-slate-300 bg-slate-700 hover:bg-slate-600 transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button 
+                onClick={handleCreateProfile}
+                disabled={!newProfileName.trim()}
+                className="flex-1 py-3 rounded-xl font-bold bg-sky-500 hover:bg-sky-600 text-slate-950 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+              >
+                <i className="fa-solid fa-plus"></i> สร้างเลย
               </button>
             </div>
           </div>
