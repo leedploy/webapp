@@ -56,6 +56,9 @@ export default function Home() {
   // State สำหรับ Modal เลือกโปรไฟล์
   const [showProfileSelectorModal, setShowProfileSelectorModal] = useState(false);
 
+  // State สำหรับ Modal เพิ่มบันทึกใหม่
+  const [showAddNoteModal, setShowAddNoteModal] = useState(false);
+
   useEffect(() => {
     const savedSettings = localStorage.getItem('profileSettings');
     if (savedSettings) {
@@ -289,6 +292,7 @@ export default function Home() {
           };
         });
         setInputText('');
+        setShowAddNoteModal(false);
       }
     } catch (err) {
       console.error("Save failed", err);
@@ -448,25 +452,14 @@ export default function Home() {
         )}
       </main>
 
-      <div className="fixed bottom-0 md:bottom-6 left-0 right-0 w-full md:max-w-3xl mx-auto bg-slate-800/95 backdrop-blur-md border-t md:border md:rounded-2xl border-slate-700 p-4 pb-6 md:pb-4 z-20 shadow-xl">
-        <div className="flex gap-2">
-          <input 
-            type="text" 
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && saveText()}
-            disabled={isSaving}
-            placeholder="พิมพ์หรือวางข้อความที่นี่..." 
-            className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 text-base disabled:opacity-50"
-          />
-          <button 
-            onClick={saveText} 
-            disabled={isSaving || !inputText.trim()}
-            className="bg-sky-500 hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all text-slate-950 font-bold px-5 rounded-xl flex items-center justify-center text-lg"
-          >
-            {isSaving ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-paper-plane"></i>}
-          </button>
-        </div>
+      <div className="fixed bottom-6 left-0 right-0 w-full md:max-w-3xl mx-auto px-4 z-20 flex justify-center pointer-events-none">
+        <button 
+          onClick={() => setShowAddNoteModal(true)}
+          className="pointer-events-auto bg-sky-500 hover:bg-sky-600 active:scale-95 transition-all text-slate-950 font-bold px-6 py-4 rounded-full shadow-xl shadow-sky-500/20 flex items-center justify-center gap-3 w-full max-w-[250px]"
+        >
+          <i className="fa-solid fa-pen-nib text-xl"></i>
+          <span className="text-lg">เพิ่มข้อความใหม่</span>
+        </button>
       </div>
 
       <div className={`fixed top-28 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-slate-950 font-bold px-4 py-2 rounded-full shadow-lg text-sm pointer-events-none transition-opacity duration-300 z-50 ${showToast ? 'opacity-100' : 'opacity-0'}`}>
@@ -790,6 +783,44 @@ export default function Home() {
                 className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border border-dashed border-amber-500/50 bg-amber-500/5 text-amber-400 hover:bg-amber-500/10 transition-all active:scale-95 font-bold mt-4"
               >
                 <i className="fa-solid fa-plus"></i> เพิ่มโปรไฟล์ใหม่...
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal เพิ่มบันทึกใหม่ */}
+      {showAddNoteModal && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-slate-800 border-t md:border border-slate-700 rounded-t-3xl md:rounded-2xl p-6 w-full max-w-sm shadow-2xl transform transition-all duration-300 max-h-[90vh] flex flex-col">
+            <div className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4 md:hidden"></div>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-sky-400 flex items-center">
+                <i className="fa-solid fa-pen-nib mr-2"></i>เพิ่มข้อความใหม่
+              </h3>
+              <button onClick={() => setShowAddNoteModal(false)} className="text-slate-400 hover:text-slate-200 w-8 h-8 flex items-center justify-center bg-slate-900 rounded-full">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto no-scrollbar py-2">
+              <textarea 
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                autoFocus
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-4 text-slate-100 focus:outline-none focus:border-sky-500 text-base min-h-[150px] resize-none"
+                placeholder="พิมพ์หรือวางข้อความของคุณที่นี่..."
+              />
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-slate-700">
+              <button 
+                onClick={saveText}
+                disabled={isSaving || !inputText.trim()}
+                className="w-full py-4 rounded-xl font-bold bg-sky-500 hover:bg-sky-600 text-slate-950 transition-colors disabled:opacity-50 flex justify-center items-center gap-2 text-lg"
+              >
+                {isSaving ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-paper-plane"></i>}
+                บันทึกข้อความ
               </button>
             </div>
           </div>
