@@ -344,13 +344,18 @@ export default function Home() {
     <div className="text-slate-200 min-h-screen flex flex-col justify-between w-full md:max-w-3xl mx-auto bg-slate-900 shadow-2xl relative">
       <div className="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 sticky top-0 z-30">
         <div className="bg-slate-900 px-4 py-2 flex items-center justify-between border-b border-slate-700/50">
-          <button 
-            onClick={() => setShowManageProfilesModal(true)}
-            className="flex items-center text-sm text-sky-400 font-bold hover:text-sky-300 transition-colors active:scale-95 bg-slate-800/50 px-2 py-1 rounded-lg border border-slate-700/50"
-            title="จัดการโปรไฟล์"
-          >
-            <i className="fa-solid fa-user-circle mr-2"></i> โปรไฟล์ <i className="fa-solid fa-gear ml-1.5 text-[10px] opacity-70"></i>
-          </button>
+          <div className="flex items-center gap-2">
+            <Link href="/" className="w-8 h-8 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded-full text-slate-300 transition-colors active:scale-95 border border-slate-700" title="กลับหน้าโฮม">
+              <i className="fa-solid fa-arrow-left"></i>
+            </Link>
+            <button 
+              onClick={() => setShowManageProfilesModal(true)}
+              className="flex items-center text-sm text-sky-400 font-bold hover:text-sky-300 transition-colors active:scale-95 bg-slate-800/50 px-2 py-1 rounded-lg border border-slate-700/50"
+              title="จัดการโปรไฟล์"
+            >
+              <i className="fa-solid fa-user-circle mr-2"></i> โปรไฟล์ <i className="fa-solid fa-gear ml-1.5 text-[10px] opacity-70"></i>
+            </button>
+          </div>
           <button 
             onClick={() => setShowProfileSelectorModal(true)}
             className="bg-slate-800 text-sky-400 text-sm font-bold border border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:border-sky-500 cursor-pointer flex items-center gap-2 hover:bg-slate-700 transition-colors active:scale-95"
@@ -360,14 +365,9 @@ export default function Home() {
           </button>
         </div>
         <header className="p-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="w-8 h-8 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded-full text-slate-300 transition-colors active:scale-95 border border-slate-700">
-              <i className="fa-solid fa-arrow-left"></i>
-            </Link>
-            <h1 className="text-xl font-bold text-sky-400">
-              <i className="fa-solid fa-box-archive mr-2"></i>QuickMemo
-            </h1>
-          </div>
+          <h1 className="text-xl font-bold text-sky-400 flex items-center">
+            <i className="fa-solid fa-box-archive mr-2"></i>QuickMemo
+          </h1>
           <div className="flex items-center gap-2">
             <select 
               value={sortMode} 
