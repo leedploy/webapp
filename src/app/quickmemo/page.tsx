@@ -14,7 +14,7 @@ type TextItem = {
 
 export default function Home() {
   const [currentTab, setCurrentTab] = useState<'general' | 'account'>('general');
-  const [sortMode, setSortMode] = useState<'manual' | 'score'>('manual');
+  const [sortMode, setSortMode] = useState<'manual' | 'score'>('score');
   const [currentProfile, setCurrentProfile] = useState<string>('Grok imagine');
   const [profilesList, setProfilesList] = useState<string[]>(['Grok imagine']);
   const [dataStore, setDataStore] = useState<Record<string, { general: TextItem[]; account: TextItem[] }>>({ 'Grok imagine': { general: [], account: [] } });
