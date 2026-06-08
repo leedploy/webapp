@@ -11,16 +11,44 @@ type Bookmark = {
   created_at: string;
 };
 
-const CATEGORIES = [
-  { id: 'all', label: 'ทั้งหมด', icon: 'fa-layer-group', color: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/5' },
-  { id: 'education', label: 'ความรู้/ศึกษา', icon: 'fa-book-open', color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5' },
-  { id: 'work', label: 'งาน', icon: 'fa-briefcase', color: 'text-sky-400 border-sky-500/30 bg-sky-500/5' },
-  { id: 'entertainment', label: 'บันเทิง', icon: 'fa-gamepad', color: 'text-rose-400 border-rose-500/30 bg-rose-500/5' },
-  { id: 'other', label: 'อื่นๆ', icon: 'fa-ellipsis-h', color: 'text-amber-400 border-amber-500/30 bg-amber-500/5' }
+type Category = {
+  id: string;
+  label: string;
+  icon: string;
+  color: string;
+};
+
+const COLOR_PRESETS = [
+  { id: 'emerald', name: 'เขียว', value: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5', bgCircle: 'bg-emerald-500' },
+  { id: 'sky', name: 'ฟ้า', value: 'text-sky-400 border-sky-500/30 bg-sky-500/5', bgCircle: 'bg-sky-500' },
+  { id: 'rose', name: 'ชมพู', value: 'text-rose-400 border-rose-500/30 bg-rose-500/5', bgCircle: 'bg-rose-500' },
+  { id: 'indigo', name: 'ม่วง', value: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/5', bgCircle: 'bg-indigo-500' },
+  { id: 'amber', name: 'เหลือง', value: 'text-amber-400 border-amber-500/30 bg-amber-500/5', bgCircle: 'bg-amber-500' },
+  { id: 'orange', name: 'ส้ม', value: 'text-orange-400 border-orange-500/30 bg-orange-500/5', bgCircle: 'bg-orange-500' },
+  { id: 'cyan', name: 'น้ำเงิน', value: 'text-cyan-400 border-cyan-500/30 bg-cyan-500/5', bgCircle: 'bg-cyan-500' },
+];
+
+const ICON_PRESETS = [
+  'fa-book-open',
+  'fa-briefcase',
+  'fa-gamepad',
+  'fa-star',
+  'fa-code',
+  'fa-video',
+  'fa-globe',
+  'fa-ellipsis-h',
+  'fa-heart',
+  'fa-graduation-cap'
 ];
 
 export default function LeedLink() {
   const [links, setLinks] = useState<Bookmark[]>([]);
+  const [categories, setCategories] = useState<Category[]>([
+    { id: 'education', label: 'ความรู้/ศึกษา', icon: 'fa-book-open', color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5' },
+    { id: 'work', label: 'งาน', icon: 'fa-briefcase', color: 'text-sky-400 border-sky-500/30 bg-sky-500/5' },
+    { id: 'entertainment', label: 'บันเทิง', icon: 'fa-gamepad', color: 'text-rose-400 border-rose-500/30 bg-rose-500/5' },
+    { id: 'other', label: 'อื่นๆ', icon: 'fa-ellipsis-h', color: 'text-amber-400 border-amber-500/30 bg-amber-500/5' }
+  ]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -45,8 +73,18 @@ export default function LeedLink() {
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Category Manager Modal state
+  const [showCatModal, setShowCatModal] = useState(false);
+  const [catEditingId, setCatEditingId] = useState<string | null>(null);
+  const [catLabel, setCatLabel] = useState('');
+  const [catIcon, setCatIcon] = useState('fa-book-open');
+  const [catColor, setCatColor] = useState('text-emerald-400 border-emerald-500/30 bg-emerald-500/5');
+  const [isCatSaving, setIsCatSaving] = useState(false);
+  const [isCatDeleting, setIsCatDeleting] = useState<string | null>(null);
+
   useEffect(() => {
     fetchLinks();
+    fetchCategories();
   }, []);
 
   const fetchLinks = async () => {
@@ -61,6 +99,89 @@ export default function LeedLink() {
       console.error("Failed to fetch links", err);
     }
     setIsLoading(false);
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/categories');
+      const data = await res.json();
+      if (!data.error) {
+        setCategories(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch categories", err);
+    }
+  };
+
+  const saveCategory = async () => {
+    const label = catLabel.trim();
+    if (!label) {
+      alert("กรุณากรอกชื่อหมวดหมู่ด้วยนะคะ!");
+      return;
+    }
+    setIsCatSaving(true);
+    try {
+      const url = '/api/categories';
+      const method = catEditingId ? 'PUT' : 'POST';
+      const body = catEditingId 
+        ? { id: catEditingId, label, icon: catIcon, color: catColor }
+        : { label, icon: catIcon, color: catColor };
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchCategories();
+        fetchLinks();
+        setCatLabel('');
+        setCatEditingId(null);
+        showNotification(catEditingId ? 'แก้ไขหมวดหมู่เรียบร้อยค่ะ!' : 'เพิ่มหมวดหมู่ใหม่เรียบร้อยค่ะ!');
+      } else {
+        alert(data.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      }
+    } catch (err) {
+      console.error("Save category failed", err);
+    } finally {
+      setIsCatSaving(false);
+    }
+  };
+
+  const deleteCategory = async (id: string) => {
+    if (id === 'other') return;
+    if (!confirm('คุณพี่ลีดแน่ใจนะคะที่จะลบหมวดหมู่นี้?\nลิงก์ทั้งหมดในหมวดหมู่นี้จะถูกย้ายไปที่หมวดหมู่ "อื่นๆ" ค่ะ')) {
+      return;
+    }
+    setIsCatDeleting(id);
+    try {
+      const res = await fetch(`/api/categories?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        fetchCategories();
+        fetchLinks();
+        showNotification('ลบหมวดหมู่เรียบร้อยแล้วค่ะ');
+      }
+    } catch (err) {
+      console.error("Delete category failed", err);
+    } finally {
+      setIsCatDeleting(null);
+    }
+  };
+
+  const startEditCategory = (cat: Category) => {
+    setCatEditingId(cat.id);
+    setCatLabel(cat.label);
+    setCatIcon(cat.icon);
+    setCatColor(cat.color);
+  };
+
+  const cancelEditCategory = () => {
+    setCatEditingId(null);
+    setCatLabel('');
+    setCatIcon('fa-book-open');
+    setCatColor('text-emerald-400 border-emerald-500/30 bg-emerald-500/5');
   };
 
   const showNotification = (msg: string) => {
@@ -177,7 +298,14 @@ export default function LeedLink() {
   });
 
   const getCategoryDetails = (catId: string) => {
-    return CATEGORIES.find(c => c.id === catId) || CATEGORIES[4];
+    return categories.find(c => c.id === catId) || { id: 'other', label: 'อื่นๆ', icon: 'fa-ellipsis-h', color: 'text-amber-400 border-amber-500/30 bg-amber-500/5' };
+  };
+
+  const openAddModal = () => {
+    setNewCategory(categories[0]?.id || 'other');
+    setNewTitle('');
+    setNewUrl('');
+    setShowAddModal(true);
   };
 
   return (
@@ -234,21 +362,33 @@ export default function LeedLink() {
         </header>
 
         {/* Categories Tab slider */}
-        <div className="flex overflow-x-auto gap-2 px-4 pb-3 no-scrollbar">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold whitespace-nowrap transition-all active:scale-95 ${
-                selectedCategory === cat.id 
-                  ? 'bg-indigo-500 text-white border-indigo-400 shadow-md shadow-indigo-500/20' 
-                  : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-              }`}
-            >
-              <i className={`fa-solid ${cat.icon}`}></i>
-              {cat.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 px-4 pb-3">
+          <div className="flex-1 flex overflow-x-auto gap-2 no-scrollbar">
+            {[{ id: 'all', label: 'ทั้งหมด', icon: 'fa-layer-group', color: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/5' }, ...categories].map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold whitespace-nowrap transition-all active:scale-95 ${
+                  selectedCategory === cat.id 
+                    ? 'bg-indigo-500 text-white border-indigo-400 shadow-md shadow-indigo-500/20' 
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                <i className={`fa-solid ${cat.icon}`}></i>
+                {cat.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => {
+              cancelEditCategory();
+              setShowCatModal(true);
+            }}
+            className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700/60 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/50 flex items-center justify-center shrink-0 active:scale-90 transition-all cursor-pointer"
+            title="จัดการหมวดหมู่"
+          >
+            <i className="fa-solid fa-tags text-xs"></i>
+          </button>
         </div>
       </div>
 
@@ -339,7 +479,7 @@ export default function LeedLink() {
       {/* Floating Action Button */}
       <div className="fixed bottom-6 left-0 right-0 w-full md:max-w-5xl lg:max-w-6xl mx-auto px-4 z-20 flex justify-center pointer-events-none transition-all duration-300">
         <button 
-          onClick={() => setShowAddModal(true)}
+          onClick={openAddModal}
           className="pointer-events-auto bg-indigo-500 hover:bg-indigo-600 active:scale-95 transition-all text-white font-bold px-6 py-3.5 rounded-full shadow-xl shadow-indigo-500/30 flex items-center justify-center gap-2.5 w-full max-w-[240px]"
         >
           <i className="fa-solid fa-plus text-base"></i>
@@ -392,7 +532,7 @@ export default function LeedLink() {
               <div>
                 <label className="block text-xs text-slate-400 mb-1.5 font-semibold">หมวดหมู่</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {CATEGORIES.filter(c => c.id !== 'all').map(cat => (
+                  {categories.map(cat => (
                     <button
                       key={cat.id}
                       type="button"
@@ -465,7 +605,7 @@ export default function LeedLink() {
               <div>
                 <label className="block text-xs text-slate-400 mb-1.5 font-semibold">หมวดหมู่</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {CATEGORIES.filter(c => c.id !== 'all').map(cat => (
+                  {categories.map(cat => (
                     <button
                       key={cat.id}
                       type="button"
@@ -526,6 +666,152 @@ export default function LeedLink() {
                 {isDeleting ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-trash-can"></i>}
                 ลบเลย
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal จัดการหมวดหมู่ */}
+      {showCatModal && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-slate-800 border-t md:border border-slate-700 rounded-t-3xl md:rounded-2xl p-6 w-full max-w-md shadow-2xl transform transition-all duration-300 max-h-[85vh] flex flex-col">
+            <div className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4 md:hidden"></div>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-indigo-400 flex items-center gap-2">
+                <i className="fa-solid fa-tags"></i>จัดการหมวดหมู่
+              </h3>
+              <button 
+                onClick={() => setShowCatModal(false)} 
+                className="text-slate-400 hover:text-slate-200 w-8 h-8 flex items-center justify-center bg-slate-900 rounded-full"
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-5 pr-1 no-scrollbar">
+              {/* Form Add/Edit Category */}
+              <div className="bg-slate-900/50 border border-slate-700/50 rounded-2xl p-4 space-y-4">
+                <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">
+                  {catEditingId ? 'แก้ไขหมวดหมู่' : 'เพิ่มหมวดหมู่ใหม่'}
+                </h4>
+                
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1 font-semibold">ชื่อหมวดหมู่</label>
+                  <input 
+                    type="text" 
+                    value={catLabel}
+                    onChange={(e) => setCatLabel(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors"
+                    placeholder="เช่น การลงทุน, สุขภาพ"
+                  />
+                </div>
+
+                {/* Color Preset Picker */}
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1.5 font-semibold">สีของหมวดหมู่</label>
+                  <div className="flex flex-wrap gap-2.5">
+                    {COLOR_PRESETS.map(preset => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => setCatColor(preset.value)}
+                        className={`w-7 h-7 rounded-full ${preset.bgCircle} flex items-center justify-center border-2 transition-all active:scale-90 ${
+                          catColor === preset.value ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'
+                        }`}
+                        title={preset.name}
+                      >
+                        {catColor === preset.value && <i className="fa-solid fa-check text-[10px] text-slate-950"></i>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Icon Preset Picker */}
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1.5 font-semibold">ไอคอน</label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {ICON_PRESETS.map(icon => (
+                      <button
+                        key={icon}
+                        type="button"
+                        onClick={() => setCatIcon(icon)}
+                        className={`py-2 rounded-lg border text-sm flex items-center justify-center transition-all active:scale-90 ${
+                          catIcon === icon 
+                            ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-bold' 
+                            : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
+                        }`}
+                      >
+                        <i className={`fa-solid ${icon}`}></i>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Buttons for Form */}
+                <div className="flex gap-2 pt-2">
+                  {catEditingId && (
+                    <button
+                      type="button"
+                      onClick={cancelEditCategory}
+                      className="flex-1 py-2 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 transition-all active:scale-95"
+                    >
+                      ยกเลิก
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={saveCategory}
+                    disabled={isCatSaving || !catLabel.trim()}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50 transition-all flex justify-center items-center gap-1.5 active:scale-95"
+                  >
+                    {isCatSaving ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-check"></i>}
+                    {catEditingId ? 'บันทึกการแก้ไข' : 'บันทึกหมวดหมู่'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Categories List */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">หมวดหมู่ทั้งหมด</h4>
+                <div className="space-y-1.5 max-h-[25vh] overflow-y-auto pr-1 no-scrollbar">
+                  {categories.map(cat => (
+                    <div 
+                      key={cat.id} 
+                      className="flex justify-between items-center bg-slate-900/40 border border-slate-700/30 rounded-xl px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`w-7 h-7 rounded-lg border flex items-center justify-center text-xs ${cat.color}`}>
+                          <i className={`fa-solid ${cat.icon}`}></i>
+                        </span>
+                        <span className="text-xs text-slate-200 font-bold">{cat.label}</span>
+                      </div>
+                      
+                      {/* Hide edit/delete actions for 'other' fallback */}
+                      {cat.id !== 'other' ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => startEditCategory(cat)}
+                            className="w-7 h-7 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-all flex items-center justify-center active:scale-90"
+                            title="แก้ไขหมวดหมู่"
+                          >
+                            <i className="fa-regular fa-edit text-xs"></i>
+                          </button>
+                          <button
+                            onClick={() => deleteCategory(cat.id)}
+                            disabled={isCatDeleting === cat.id}
+                            className="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-all flex items-center justify-center active:scale-90"
+                            title="ลบหมวดหมู่"
+                          >
+                            {isCatDeleting === cat.id ? <i className="fa-solid fa-spinner fa-spin text-xs"></i> : <i className="fa-regular fa-trash-can text-xs"></i>}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-500 font-medium italic px-2">ระบบ</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
