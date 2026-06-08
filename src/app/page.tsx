@@ -2,9 +2,23 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function HomeHub() {
   const [currentTime, setCurrentTime] = useState<string>('');
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('/api/auth', { method: 'DELETE' });
+      if (res.ok) {
+        router.push('/login');
+        router.refresh();
+      }
+    } catch (e) {
+      console.error('Logout failed', e);
+    }
+  };
 
   useEffect(() => {
     const updateTime = () => {
@@ -39,7 +53,27 @@ export default function HomeHub() {
       </div>
 
       {/* App Grid */}
-      <main className="relative z-10 flex-1 p-6">
+      <main className="relative z-10 flex-1 p-6 flex flex-col gap-6">
+        {/* Welcome Header & Logout */}
+        <div className="flex justify-between items-center bg-slate-800/30 backdrop-blur-md border border-slate-700/30 rounded-2xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center text-white text-lg font-bold">
+              L
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-100">สวัสดีค่ะ พี่ลีด</h2>
+              <p className="text-[10px] text-slate-400">ยินดีต้อนรับสู่แดชบอร์ดส่วนตัว</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700/60 hover:bg-rose-500/10 hover:border-rose-500/40 text-slate-400 hover:text-rose-400 transition-all flex items-center justify-center active:scale-95 cursor-pointer"
+            title="ออกจากระบบ"
+          >
+            <i className="fa-solid fa-right-from-bracket text-sm"></i>
+          </button>
+        </div>
+
         <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-4 gap-y-6">
           
           {/* QuickMemo App */}

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { cookies } from 'next/headers';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -7,6 +8,13 @@ const pool = new Pool({
     rejectUnauthorized: false
   }
 });
+
+// ตรวจสอบสิทธิ์การเข้าใช้งาน
+async function checkAuth() {
+  const cookieStore = await cookies();
+  const authSession = cookieStore.get('auth_session')?.value;
+  return authSession === 'leed_logged_in_session_token';
+}
 
 // สร้างตารางอัตโนมัติหากยังไม่มี
 async function initTable() {
@@ -29,6 +37,9 @@ async function initTable() {
 
 export async function GET() {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     await initTable();
     const { rows } = await pool.query('SELECT * FROM saved_texts ORDER BY sort_order ASC, created_at DESC');
     
@@ -56,6 +67,9 @@ export async function GET() {
 
 export async function POST(req) {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     await initTable();
     const { category, content, profile = 'Grok imagine' } = await req.json();
     if (!category || !content) {
@@ -71,6 +85,9 @@ export async function POST(req) {
 
 export async function DELETE(req) {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     await initTable();
     const id = req.nextUrl.searchParams.get('id');
     const profile = req.nextUrl.searchParams.get('profile');
@@ -94,6 +111,9 @@ export async function DELETE(req) {
 
 export async function PUT(req) {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     await initTable();
     const body = await req.json();
     const { id, content, score } = body;
@@ -119,6 +139,9 @@ export async function PUT(req) {
 
 export async function PATCH(req) {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     await initTable();
     const body = await req.json();
     

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { cookies } from 'next/headers';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -7,6 +8,13 @@ const pool = new Pool({
     rejectUnauthorized: false
   }
 });
+
+// ตรวจสอบสิทธิ์การเข้าใช้งาน
+async function checkAuth() {
+  const cookieStore = await cookies();
+  const authSession = cookieStore.get('auth_session')?.value;
+  return authSession === 'leed_logged_in_session_token';
+}
 
 // Initialize table if it doesn't exist
 async function initTable() {
@@ -24,6 +32,9 @@ async function initTable() {
 
 export async function GET() {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     await initTable();
     const { rows } = await pool.query('SELECT * FROM leed_links ORDER BY created_at DESC');
     return NextResponse.json(rows);
@@ -34,6 +45,9 @@ export async function GET() {
 
 export async function POST(req) {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     await initTable();
     const { title, url, category } = await req.json();
     if (!title || !url || !category) {
@@ -49,6 +63,9 @@ export async function POST(req) {
 
 export async function PUT(req) {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     await initTable();
     const { id, title, url, category } = await req.json();
     if (!id || !title || !url || !category) {
@@ -64,6 +81,9 @@ export async function PUT(req) {
 
 export async function DELETE(req) {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     await initTable();
     const id = req.nextUrl.searchParams.get('id');
     if (!id) {
