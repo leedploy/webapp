@@ -20,7 +20,7 @@ export default function HomeHub() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col w-full md:max-w-3xl mx-auto bg-slate-900 shadow-2xl relative overflow-hidden">
+    <div className="min-h-screen flex flex-col w-full md:max-w-5xl lg:max-w-6xl mx-auto bg-slate-900 shadow-2xl relative overflow-hidden transition-all duration-300">
       {/* Premium Background */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950"></div>
@@ -40,7 +40,7 @@ export default function HomeHub() {
 
       {/* App Grid */}
       <main className="relative z-10 flex-1 p-6">
-        <div className="grid grid-cols-4 gap-x-4 gap-y-6">
+        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-4 gap-y-6">
           
           {/* QuickMemo App */}
           <Link href="/quickmemo" className="flex flex-col items-center gap-2 group outline-none">
@@ -48,6 +48,14 @@ export default function HomeHub() {
               <i className="fa-solid fa-box-archive drop-shadow-md"></i>
             </div>
             <span className="text-slate-200 text-xs md:text-sm font-medium drop-shadow-md">QuickMemo</span>
+          </Link>
+
+          {/* Leed Link App */}
+          <Link href="/leedlink" className="flex flex-col items-center gap-2 group outline-none">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-[1.5rem] bg-gradient-to-br from-purple-500 to-indigo-700 shadow-lg shadow-indigo-500/30 flex items-center justify-center text-white text-3xl group-hover:scale-95 group-active:scale-90 transition-all">
+              <i className="fa-solid fa-book-open drop-shadow-md"></i>
+            </div>
+            <span className="text-slate-200 text-xs md:text-sm font-medium drop-shadow-md">Leed Link</span>
           </Link>
 
           {/* Placeholder for future apps (optional visual effect) */}
@@ -63,17 +71,17 @@ export default function HomeHub() {
 
       {/* Bottom Dock (Optional for iOS style) */}
       <div className="relative z-10 p-4 pb-8 md:pb-6">
-        <div className="w-full max-w-sm mx-auto bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-4 flex justify-around items-center">
+        <div className="w-full max-w-sm md:max-w-md mx-auto bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-4 flex justify-around items-center transition-all duration-300">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white text-xl opacity-50">
             <i className="fa-solid fa-phone"></i>
           </div>
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-400 to-red-600 flex items-center justify-center text-white text-xl opacity-50">
             <i className="fa-solid fa-envelope"></i>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-white text-xl opacity-50">
-            <i className="fa-solid fa-comment-dots"></i>
-          </div>
-          <Link href="/quickmemo" className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white text-xl shadow-lg shadow-sky-500/20 active:scale-90 transition-all">
+          <Link href="/leedlink" className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-700 flex items-center justify-center text-white text-xl shadow-lg shadow-indigo-500/20 active:scale-90 transition-all" title="Leed Link">
+            <i className="fa-solid fa-book-open"></i>
+          </Link>
+          <Link href="/quickmemo" className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white text-xl shadow-lg shadow-sky-500/20 active:scale-90 transition-all" title="QuickMemo">
             <i className="fa-solid fa-box-archive"></i>
           </Link>
         </div>

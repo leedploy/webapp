@@ -341,7 +341,7 @@ export default function Home() {
   });
 
   return (
-    <div className="text-slate-200 min-h-screen flex flex-col justify-between w-full md:max-w-3xl mx-auto bg-slate-900 shadow-2xl relative">
+    <div className="text-slate-200 min-h-screen flex flex-col justify-between w-full md:max-w-5xl lg:max-w-6xl mx-auto bg-slate-900 shadow-2xl relative transition-all duration-300">
       <div className="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 sticky top-0 z-30">
         <div className="bg-slate-900 px-4 py-2 flex items-center justify-between border-b border-slate-700/50">
           <div className="flex items-center gap-2">
@@ -421,7 +421,7 @@ export default function Home() {
             animation={150}
             delay={200}
             delayOnTouchOnly={true}
-            className="space-y-3"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
           >
             {displayList.map(item => (
               <div key={item.id} className="bg-slate-800 border border-slate-700/50 rounded-xl p-4 flex justify-between items-start gap-4 shadow-md relative">
