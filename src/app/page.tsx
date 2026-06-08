@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 
 export default function HomeHub() {
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [currentDate, setCurrentDate] = useState<string>('');
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -26,6 +27,14 @@ export default function HomeHub() {
       const hours = now.getHours().toString().padStart(2, '0');
       const minutes = now.getMinutes().toString().padStart(2, '0');
       setCurrentTime(`${hours}:${minutes}`);
+
+      // Format date in Thai style: Day, Month, and B.E. Year (e.g., 8 มิ.ย. 2569)
+      const dateString = now.toLocaleDateString('th-TH', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+      setCurrentDate(dateString);
     };
     
     updateTime();
@@ -44,8 +53,9 @@ export default function HomeHub() {
 
       {/* Status Bar */}
       <div className="relative z-10 px-6 py-3 flex justify-between items-center text-slate-100 text-sm font-medium">
-        <div>{currentTime}</div>
-        <div className="flex items-center gap-2">
+        <div className="w-1/3 text-left">{currentTime}</div>
+        <div className="w-1/3 text-center text-xs md:text-sm text-slate-300 font-semibold drop-shadow-sm">{currentDate}</div>
+        <div className="w-1/3 flex justify-end items-center gap-2">
           <i className="fa-solid fa-signal text-[10px]"></i>
           <i className="fa-solid fa-wifi text-[12px]"></i>
           <i className="fa-solid fa-battery-full text-[14px]"></i>
