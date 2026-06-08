@@ -9,6 +9,7 @@ type Bookmark = {
   url: string;
   category: string;
   created_at: string;
+  score?: number;
 };
 
 type Category = {
@@ -52,6 +53,7 @@ export default function LeedLink() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [sortMode, setSortMode] = useState<'created_at' | 'score'>('created_at');
   
   // Toast state
   const [showToast, setShowToast] = useState(false);
@@ -62,12 +64,14 @@ export default function LeedLink() {
   const [newTitle, setNewTitle] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [newCategory, setNewCategory] = useState('education');
+  const [newScore, setNewScore] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
   const [editingItem, setEditingItem] = useState<Bookmark | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editUrl, setEditUrl] = useState('');
   const [editCategory, setEditCategory] = useState('');
+  const [editScore, setEditScore] = useState(0);
   const [isEditingSaving, setIsEditingSaving] = useState(false);
 
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
@@ -219,7 +223,7 @@ export default function LeedLink() {
       const res = await fetch('/api/links', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, url, category: newCategory })
+        body: JSON.stringify({ title, url, category: newCategory, score: newScore })
       });
       const data = await res.json();
       if (data.success && data.data) {
@@ -227,6 +231,7 @@ export default function LeedLink() {
         setNewTitle('');
         setNewUrl('');
         setNewCategory('education');
+        setNewScore(0);
         setShowAddModal(false);
         showNotification('บันทึกลิงก์ใหม่เรียบร้อยค่ะ!');
       }
@@ -242,6 +247,7 @@ export default function LeedLink() {
     setEditTitle(item.title);
     setEditUrl(item.url);
     setEditCategory(item.category);
+    setEditScore(item.score ?? 0);
   };
 
   const confirmEdit = async () => {
@@ -259,7 +265,7 @@ export default function LeedLink() {
       const res = await fetch('/api/links', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingItem.id, title, url, category: editCategory })
+        body: JSON.stringify({ id: editingItem.id, title, url, category: editCategory, score: editScore })
       });
       const data = await res.json();
       if (data.success && data.data) {
@@ -272,6 +278,33 @@ export default function LeedLink() {
       alert("เกิดข้อผิดพลาดในการแก้ไขข้อมูล");
     }
     setIsEditingSaving(false);
+  };
+
+  const handleLikeLink = async (item: Bookmark) => {
+    const nextScore = (item.score ?? 0) + 1;
+    // Optimistic UI update
+    setLinks(prev => prev.map(x => x.id === item.id ? { ...x, score: nextScore } : x));
+    
+    try {
+      const res = await fetch('/api/links', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id: item.id, 
+          title: item.title, 
+          url: item.url, 
+          category: item.category, 
+          score: nextScore 
+        })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error('Update failed');
+      }
+    } catch (err) {
+      console.error("Like failed", err);
+      fetchLinks(); // revert on error
+    }
   };
 
   const confirmDelete = async () => {
@@ -295,6 +328,14 @@ export default function LeedLink() {
     const matchesSearch = link.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           link.url.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
+  });
+
+  const displayLinks = [...filteredLinks].sort((a, b) => {
+    if (sortMode === 'score') {
+      return (b.score ?? 0) - (a.score ?? 0);
+    }
+    // Default: Sort by created_at DESC
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
   const getCategoryDetails = (catId: string) => {
@@ -335,7 +376,16 @@ export default function LeedLink() {
             <h1 className="text-xl font-extrabold text-indigo-400 flex items-center gap-2 drop-shadow-md">
               <i className="fa-solid fa-book-open"></i> Leed Link
             </h1>
-            <span className="text-[10px] text-slate-500 font-medium tracking-wide">แหล่งรวบรวมลิงก์ความรู้</span>
+            <div className="flex items-center gap-2">
+              <select 
+                value={sortMode} 
+                onChange={(e) => setSortMode(e.target.value as 'created_at' | 'score')}
+                className="bg-slate-900 text-[10px] text-slate-300 border border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500 cursor-pointer"
+              >
+                <option value="created_at">เรียงตามวันที่สร้าง</option>
+                <option value="score">เรียงตามคะแนน</option>
+              </select>
+            </div>
           </div>
 
           {/* Search bar */}
@@ -399,7 +449,7 @@ export default function LeedLink() {
             <i className="fa-solid fa-circle-notch fa-spin text-4xl mb-3 block text-indigo-500"></i>
             <p className="text-sm">กำลังเปิดคลังลิงก์ความรู้...</p>
           </div>
-        ) : filteredLinks.length === 0 ? (
+        ) : displayLinks.length === 0 ? (
           <div className="text-center py-16 text-slate-500 bg-slate-800/20 border border-slate-800/80 rounded-2xl p-6">
             <i className="fa-solid fa-book-bookmark text-4xl mb-3 block text-indigo-500/40"></i>
             <p className="text-sm font-semibold text-slate-400">ไม่พบคลิปลิงก์ในหมวดหมู่นี้</p>
@@ -407,7 +457,7 @@ export default function LeedLink() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredLinks.map(item => {
+            {displayLinks.map(item => {
               const catDetails = getCategoryDetails(item.category);
               return (
                 <div key={item.id} className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/40 hover:border-indigo-500/30 rounded-xl p-3.5 flex flex-col gap-2.5 transition-all shadow-md group relative overflow-hidden">
@@ -421,8 +471,14 @@ export default function LeedLink() {
                         <i className={`fa-solid ${catDetails.icon} text-sm`}></i>
                       </div>
                       <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-slate-100 truncate group-hover:text-indigo-400 transition-colors pr-2" title={item.title}>
-                          {item.title}
+                        <h3 className="text-sm font-bold text-slate-100 truncate group-hover:text-indigo-400 transition-colors pr-2 flex items-center gap-1.5" title={item.title}>
+                          <span className="truncate">{item.title}</span>
+                          {(item.score !== undefined && item.score !== 0) && (
+                            <span className="inline-flex items-center text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 px-1.5 py-0.5 rounded-full shrink-0">
+                              <i className="fa-solid fa-heart mr-1 text-[8px]"></i>
+                              {item.score}
+                            </span>
+                          )}
                         </h3>
                         <p className="text-[11px] text-slate-500 truncate mt-0.5" title={item.url}>
                           {item.url}
@@ -437,6 +493,17 @@ export default function LeedLink() {
 
                   <div className="flex justify-between items-center pt-2.5 border-t border-slate-700/30 relative z-10">
                     <div className="flex items-center gap-1">
+                      <button 
+                        onClick={() => handleLikeLink(item)}
+                        className={`w-8 h-8 rounded-lg transition-all flex items-center justify-center active:scale-90 ${
+                          (item.score ?? 0) > 0 
+                            ? 'text-rose-400 bg-rose-500/5 hover:bg-rose-500/10 hover:text-rose-300' 
+                            : 'text-slate-400 hover:text-rose-400 hover:bg-slate-800'
+                        }`}
+                        title="ให้หัวใจ"
+                      >
+                        <i className="fa-solid fa-heart text-sm"></i>
+                      </button>
                       <button 
                         onClick={() => handleCopy(item.url)}
                         className="w-8 h-8 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition-all flex items-center justify-center active:scale-90"
@@ -549,6 +616,28 @@ export default function LeedLink() {
                   ))}
                 </div>
               </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1.5 font-semibold">คะแนนหัวใจเริ่มต้น</label>
+                <div className="flex items-center gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-700 max-w-[120px]">
+                  <button 
+                    type="button"
+                    onClick={() => setNewScore(s => Math.max(0, s - 1))}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400 active:scale-90 transition-all"
+                    title="ลดคะแนน"
+                  >
+                    <i className="fa-solid fa-minus text-xs"></i>
+                  </button>
+                  <span className="flex-1 text-center text-sm font-bold text-slate-300">{newScore}</span>
+                  <button 
+                    type="button"
+                    onClick={() => setNewScore(s => s + 1)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-500 active:scale-90 transition-all"
+                    title="เพิ่มคะแนน"
+                  >
+                    <i className="fa-solid fa-plus text-xs"></i>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="mt-6 pt-4 border-t border-slate-700">
@@ -620,6 +709,28 @@ export default function LeedLink() {
                       {cat.label}
                     </button>
                   ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1.5 font-semibold">คะแนนหัวใจ</label>
+                <div className="flex items-center gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-700 max-w-[120px]">
+                  <button 
+                    type="button"
+                    onClick={() => setEditScore(s => Math.max(0, s - 1))}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400 active:scale-90 transition-all"
+                    title="ลดคะแนน"
+                  >
+                    <i className="fa-solid fa-minus text-xs"></i>
+                  </button>
+                  <span className="flex-1 text-center text-sm font-bold text-slate-300">{editScore}</span>
+                  <button 
+                    type="button"
+                    onClick={() => setEditScore(s => s + 1)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-500 active:scale-90 transition-all"
+                    title="เพิ่มคะแนน"
+                  >
+                    <i className="fa-solid fa-plus text-xs"></i>
+                  </button>
                 </div>
               </div>
             </div>

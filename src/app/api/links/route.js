@@ -28,6 +28,11 @@ async function initTable() {
     );
   `;
   await pool.query(query);
+
+  const addScoreQuery = `
+    ALTER TABLE leed_links ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0;
+  `;
+  await pool.query(addScoreQuery);
 }
 
 export async function GET() {
@@ -49,12 +54,12 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     await initTable();
-    const { title, url, category } = await req.json();
+    const { title, url, category, score } = await req.json();
     if (!title || !url || !category) {
       return NextResponse.json({ error: 'Missing title, url, or category' }, { status: 400 });
     }
-    const query = 'INSERT INTO leed_links (title, url, category) VALUES ($1, $2, $3) RETURNING *';
-    const { rows } = await pool.query(query, [title, url, category]);
+    const query = 'INSERT INTO leed_links (title, url, category, score) VALUES ($1, $2, $3, $4) RETURNING *';
+    const { rows } = await pool.query(query, [title, url, category, score ?? 0]);
     return NextResponse.json({ success: true, data: rows[0] });
   } catch (error) {
     return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
@@ -67,12 +72,12 @@ export async function PUT(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     await initTable();
-    const { id, title, url, category } = await req.json();
+    const { id, title, url, category, score } = await req.json();
     if (!id || !title || !url || !category) {
       return NextResponse.json({ error: 'Missing id, title, url, or category' }, { status: 400 });
     }
-    const query = 'UPDATE leed_links SET title = $1, url = $2, category = $3 WHERE id = $4 RETURNING *';
-    const { rows } = await pool.query(query, [title, url, category, id]);
+    const query = 'UPDATE leed_links SET title = $1, url = $2, category = $3, score = $4 WHERE id = $5 RETURNING *';
+    const { rows } = await pool.query(query, [title, url, category, score ?? 0, id]);
     return NextResponse.json({ success: true, data: rows[0] });
   } catch (error) {
     return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
