@@ -89,7 +89,27 @@ export default function LeedLink() {
   useEffect(() => {
     fetchLinks();
     fetchCategories();
+
+    // Load persisted state from localStorage
+    const savedCategory = localStorage.getItem('leedlink_selected_category');
+    if (savedCategory) {
+      setSelectedCategory(savedCategory);
+    }
+    const savedSortMode = localStorage.getItem('leedlink_sort_mode');
+    if (savedSortMode === 'created_at' || savedSortMode === 'score') {
+      setSortMode(savedSortMode);
+    }
   }, []);
+
+  // Save selected category to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('leedlink_selected_category', selectedCategory);
+  }, [selectedCategory]);
+
+  // Save sort mode to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('leedlink_sort_mode', sortMode);
+  }, [sortMode]);
 
   const fetchLinks = async () => {
     setIsLoading(true);
