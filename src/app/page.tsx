@@ -102,6 +102,14 @@ export default function HomeHub() {
             <span className="text-slate-200 text-xs md:text-sm font-medium drop-shadow-md">Leed Link</span>
           </Link>
 
+          {/* Authenticator App */}
+          <Link href="/authenticator" className="flex flex-col items-center gap-2 group outline-none">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-[1.5rem] bg-gradient-to-br from-teal-400 to-emerald-600 shadow-lg shadow-emerald-500/30 flex items-center justify-center text-white text-3xl group-hover:scale-95 group-active:scale-90 transition-all">
+              <i className="fa-solid fa-shield-halved drop-shadow-md"></i>
+            </div>
+            <span className="text-slate-200 text-xs md:text-sm font-medium drop-shadow-md">Auth 2FA</span>
+          </Link>
+
           {/* Placeholder for future apps (optional visual effect) */}
           <div className="flex flex-col items-center gap-2 opacity-30">
             <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-[1.5rem] bg-slate-800/50 border border-slate-700 border-dashed flex items-center justify-center text-slate-500 text-2xl">
@@ -127,6 +135,9 @@ export default function HomeHub() {
           </Link>
           <Link href="/quickmemo" className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white text-xl shadow-lg shadow-sky-500/20 active:scale-90 transition-all" title="QuickMemo">
             <i className="fa-solid fa-box-archive"></i>
+          </Link>
+          <Link href="/authenticator" className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white text-xl shadow-lg shadow-emerald-500/20 active:scale-90 transition-all" title="Authenticator">
+            <i className="fa-solid fa-shield-halved"></i>
           </Link>
         </div>
       </div>
