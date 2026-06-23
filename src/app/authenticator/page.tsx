@@ -100,9 +100,20 @@ export default function Authenticator() {
     }
   };
 
+  // แยกคีย์จากรูปแบบที่มีท่อแบ่ง (เช่น username|secret_key)
+  const extractSecretKey = (str: string): string => {
+    let s = str.trim();
+    if (s.includes('|')) {
+      const parts = s.split('|');
+      s = parts[parts.length - 1].trim();
+    }
+    return s;
+  };
+
   // ตรวจสอบความถูกต้องของ Base32 Secret Key
   const isValidBase32 = (str: string) => {
-    const clean = str.replace(/[\s-]/g, '').toUpperCase();
+    const extracted = extractSecretKey(str);
+    const clean = extracted.replace(/[\s-]/g, '').toUpperCase();
     if (!clean) return false;
     return /^[A-Z2-7]+=*$/.test(clean);
   };
@@ -140,7 +151,8 @@ export default function Authenticator() {
     setIsSubmitting(true);
     setSecretError('');
 
-    const cleanSecret = secretKey.replace(/[\s-]/g, '').toUpperCase();
+    const extracted = extractSecretKey(secretKey);
+    const cleanSecret = extracted.replace(/[\s-]/g, '').toUpperCase();
 
     try {
       const isEdit = !!editingAccount;
@@ -517,7 +529,18 @@ export default function Authenticator() {
                   type="text"
                   value={secretKey}
                   onChange={(e) => {
-                    setSecretKey(e.target.value);
+                    const val = e.target.value;
+                    // ตรวจจับรูปแบบมีท่อแบ่ง (Pipe format)
+                    if (val.includes('|')) {
+                      const parts = val.split('|');
+                      const parsedSecret = parts[parts.length - 1].trim();
+                      setSecretKey(parsedSecret);
+                      if (!accountName.trim() && parts[0].trim()) {
+                        setAccountName(parts[0].trim());
+                      }
+                    } else {
+                      setSecretKey(val);
+                    }
                     if (secretError) setSecretError('');
                   }}
                   className={`w-full bg-slate-900 border rounded-xl px-3.5 py-2.5 text-sm font-mono text-slate-200 focus:outline-none ${

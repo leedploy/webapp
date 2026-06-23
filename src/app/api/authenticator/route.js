@@ -58,7 +58,12 @@ export async function POST(req) {
     }
 
     // ล้างพื้นที่ว่างและทำให้เป็นพิมพ์ใหญ่สำหรับ Secret Key
-    const sanitizedSecret = secretKey.replace(/\s+/g, '').toUpperCase();
+    let sanitizedSecret = secretKey.trim();
+    if (sanitizedSecret.includes('|')) {
+      const parts = sanitizedSecret.split('|');
+      sanitizedSecret = parts[parts.length - 1].trim();
+    }
+    sanitizedSecret = sanitizedSecret.replace(/\s+/g, '').toUpperCase();
     
     const query = 'INSERT INTO two_fa_accounts (issuer, account_name, secret_key) VALUES ($1, $2, $3) RETURNING *';
     const { rows } = await pool.query(query, [issuer.trim(), accountName.trim(), sanitizedSecret]);
@@ -83,7 +88,12 @@ export async function PUT(req) {
     }
 
     // ล้างพื้นที่ว่างและทำให้เป็นพิมพ์ใหญ่สำหรับ Secret Key
-    const sanitizedSecret = secretKey.replace(/\s+/g, '').toUpperCase();
+    let sanitizedSecret = secretKey.trim();
+    if (sanitizedSecret.includes('|')) {
+      const parts = sanitizedSecret.split('|');
+      sanitizedSecret = parts[parts.length - 1].trim();
+    }
+    sanitizedSecret = sanitizedSecret.replace(/\s+/g, '').toUpperCase();
 
     const query = 'UPDATE two_fa_accounts SET issuer = $1, account_name = $2, secret_key = $3 WHERE id = $4 RETURNING *';
     const { rows } = await pool.query(query, [issuer.trim(), accountName.trim(), sanitizedSecret, id]);
