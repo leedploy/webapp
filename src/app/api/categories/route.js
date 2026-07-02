@@ -1,23 +1,10 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-import { cookies } from 'next/headers';
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
-
-// ตรวจสอบสิทธิ์การเข้าใช้งาน
-async function checkAuth() {
-  const cookieStore = await cookies();
-  const authSession = cookieStore.get('auth_session')?.value;
-  return authSession === 'leed_logged_in_session_token';
-}
+import { pool, initDB } from '@/lib/db';
+import { checkSession } from '@/lib/auth';
 
 // สร้างตารางหมวดหมู่และเพิ่มข้อมูลเริ่มต้น
 async function initCategoriesTable() {
+  await initDB();
   const createQuery = `
     CREATE TABLE IF NOT EXISTS leed_categories (
       id VARCHAR(50) PRIMARY KEY,
@@ -45,7 +32,8 @@ async function initCategoriesTable() {
 
 export async function GET() {
   try {
-    if (!(await checkAuth())) {
+    const user = await checkSession();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     await initCategoriesTable();
@@ -58,7 +46,8 @@ export async function GET() {
 
 export async function POST(req) {
   try {
-    if (!(await checkAuth())) {
+    const user = await checkSession();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     await initCategoriesTable();
@@ -87,7 +76,8 @@ export async function POST(req) {
 
 export async function PUT(req) {
   try {
-    if (!(await checkAuth())) {
+    const user = await checkSession();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     await initCategoriesTable();
@@ -111,7 +101,8 @@ export async function PUT(req) {
 
 export async function DELETE(req) {
   try {
-    if (!(await checkAuth())) {
+    const user = await checkSession();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     await initCategoriesTable();

@@ -4,10 +4,10 @@ export function proxy(request) {
   const { pathname } = request.nextUrl;
   const authSession = request.cookies.get('auth_session')?.value;
 
-  // Public paths that do not require login
+  // เส้นทางสาธารณะที่ไม่ต้องล็อกอิน
   const isPublicPath = pathname === '/login' || pathname.startsWith('/api/auth');
 
-  // Static assets/files that must be allowed
+  // ไฟล์และ asset ต่างๆ ที่ต้องข้ามการตรวจสิทธิ์
   const isAssetPath = pathname.startsWith('/_next') || 
                       pathname.includes('.') || 
                       pathname.startsWith('/static');
@@ -16,23 +16,23 @@ export function proxy(request) {
     return NextResponse.next();
   }
 
-  // Authentication check
-  const isAuthenticated = authSession === 'leed_logged_in_session_token';
+  // ตรวจสอบสถานะการล็อกอินเบื้องต้นด้วยคุกกี้เซสชัน
+  const isAuthenticated = !!authSession;
 
   if (!isAuthenticated && !isPublicPath) {
-    // If they call API directly, return 401 JSON
+    // ถ้าเรียก API โดยตรง ให้ส่ง 401
     if (pathname.startsWith('/api/')) {
       return new NextResponse(
         JSON.stringify({ error: 'Unauthorized. Please login.' }),
         { status: 401, headers: { 'content-type': 'application/json' } }
       );
     }
-    // For pages, redirect to /login
+    // ถ้าเข้าหน้าเว็บทั่วไป ให้เด้งไปหน้า login
     const loginUrl = new URL('/login', request.url);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect to home if they are already logged in and try to visit /login
+  // ถ้าล็อกอินแล้วและจะไปหน้า /login ให้เด้งกลับหน้าหลัก
   if (isAuthenticated && pathname === '/login') {
     const homeUrl = new URL('/', request.url);
     return NextResponse.redirect(homeUrl);
@@ -44,7 +44,7 @@ export function proxy(request) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
+     * ตรวจจับทุกเส้นทางยกเว้น:
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)

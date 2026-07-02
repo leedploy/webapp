@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 export default function HomeHub() {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<string>('');
+  const [username, setUsername] = useState<string>('ผู้ใช้งาน');
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -22,6 +23,23 @@ export default function HomeHub() {
   };
 
   useEffect(() => {
+    // โหลดข้อมูลผู้ใช้ที่ล็อกอินอยู่
+    const fetchUser = async () => {
+      try {
+        const res = await fetch('/api/auth');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.user) {
+            setUsername(data.user.username);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch user', e);
+      }
+    };
+
+    fetchUser();
+
     const updateTime = () => {
       const now = new Date();
       const hours = now.getHours().toString().padStart(2, '0');
@@ -45,7 +63,7 @@ export default function HomeHub() {
   return (
     <div className="min-h-screen flex flex-col w-full md:max-w-5xl lg:max-w-6xl mx-auto bg-slate-900 shadow-2xl relative overflow-hidden transition-all duration-300">
       {/* Premium Background */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950"></div>
         <div className="absolute -top-[30%] -right-[20%] w-[70%] h-[70%] rounded-full bg-sky-600/20 blur-[100px]"></div>
         <div className="absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] rounded-full bg-indigo-600/20 blur-[100px]"></div>
@@ -67,11 +85,11 @@ export default function HomeHub() {
         {/* Welcome Header & Logout */}
         <div className="flex justify-between items-center bg-slate-800/30 backdrop-blur-md border border-slate-700/30 rounded-2xl p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center text-white text-lg font-bold">
-              L
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center text-white text-lg font-bold uppercase">
+              {username.charAt(0)}
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-100">สวัสดีค่ะ พี่ลีด</h2>
+              <h2 className="text-sm font-bold text-slate-100">สวัสดีค่ะ คุณ {username}</h2>
               <p className="text-[10px] text-slate-400">ยินดีต้อนรับสู่แดชบอร์ดส่วนตัว</p>
             </div>
           </div>
