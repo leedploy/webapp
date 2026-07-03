@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
 interface Note {
@@ -27,6 +27,24 @@ export default function NotesPage() {
   // Modal for deleting note
   const [deletingNote, setDeletingNote] = useState<Note | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const editorRef = useRef<HTMLDivElement>(null);
+  const loadedNoteIdRef = useRef<number | null>(null);
+
+  // Synchronize contentEditable content when active note changes
+  useEffect(() => {
+    if (activeNoteId !== null && editorRef.current) {
+      if (loadedNoteIdRef.current !== activeNoteId) {
+        const activeNote = notes.find(n => n.id === activeNoteId);
+        if (activeNote) {
+          editorRef.current.innerHTML = activeNote.content;
+          loadedNoteIdRef.current = activeNoteId;
+        }
+      }
+    } else if (activeNoteId === null) {
+      loadedNoteIdRef.current = null;
+    }
+  }, [activeNoteId, notes]);
 
   // Handle note selection
   const handleSelectNote = (note: Note) => {
@@ -179,10 +197,119 @@ export default function NotesPage() {
     }
   };
 
+  // Helper to extract clean plain text from HTML
+  const getPlainText = (html: string) => {
+    if (typeof window === 'undefined') return '';
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    return tempDiv.innerText || tempDiv.textContent || '';
+  };
+
+  // Handle text input inside contentEditable
+  const handleInput = () => {
+    if (editorRef.current) {
+      setEditorContent(editorRef.current.innerHTML);
+    }
+  };
+
+  // Helper to show upload status/error
+  const showUploadError = (placeholderId: string) => {
+    const placeholderEl = document.getElementById(placeholderId);
+    if (placeholderEl) {
+      placeholderEl.className = 'text-rose-400 text-xs italic flex items-center gap-1.5 my-2 pl-6';
+      placeholderEl.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> อัปโหลดรูปภาพล้มเหลว`;
+      setTimeout(() => {
+        placeholderEl.remove();
+        if (editorRef.current) {
+          setEditorContent(editorRef.current.innerHTML);
+        }
+      }, 3000);
+    }
+  };
+
+  // Handle clipboard paste of image files
+  const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf('image') !== -1) {
+        e.preventDefault(); // Prevent direct binary pasting
+
+        const file = item.getAsFile();
+        if (!file) continue;
+
+        // Insert placeholder at cursor location
+        const selection = window.getSelection();
+        if (!selection || !selection.rangeCount) continue;
+        const range = selection.getRangeAt(0);
+
+        const placeholderId = `upload-${Date.now()}`;
+        const placeholder = document.createElement('span');
+        placeholder.id = placeholderId;
+        placeholder.className = 'text-indigo-400 text-xs italic animate-pulse flex items-center gap-1.5 my-2 pl-6 block';
+        placeholder.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> กำลังอัปโหลดรูปภาพ...`;
+        
+        range.insertNode(placeholder);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        // Update state with placeholder
+        if (editorRef.current) {
+          setEditorContent(editorRef.current.innerHTML);
+        }
+
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+
+          const res = await fetch('/api/notes/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.url) {
+              // Create img tag
+              const img = document.createElement('img');
+              img.src = data.url;
+              img.alt = 'Uploaded Image';
+              img.className = 'max-w-full h-auto rounded-xl my-4 border border-slate-700/60 shadow-lg block pl-6 select-all transition-all';
+              
+              // Replace placeholder with image
+              const placeholderEl = document.getElementById(placeholderId);
+              if (placeholderEl) {
+                placeholderEl.parentNode?.replaceChild(img, placeholderEl);
+              } else {
+                editorRef.current?.appendChild(img);
+              }
+            } else {
+              showUploadError(placeholderId);
+            }
+          } else {
+            showUploadError(placeholderId);
+          }
+        } catch (err) {
+          console.error('Image paste upload failed:', err);
+          showUploadError(placeholderId);
+        } finally {
+          // Sync final HTML state
+          if (editorRef.current) {
+            setEditorContent(editorRef.current.innerHTML);
+          }
+        }
+      }
+    }
+  };
+
   // Copy all text of current note
   const handleCopyAll = () => {
-    if (!editorContent) return;
-    navigator.clipboard.writeText(editorContent);
+    const plainText = getPlainText(editorContent);
+    if (!plainText) return;
+    navigator.clipboard.writeText(plainText);
     alert('คัดลอกเนื้อหาทั้งหมดลงคลิปบอร์ดแล้วค่ะ!');
   };
 
@@ -193,8 +320,9 @@ export default function NotesPage() {
   );
 
   // Statistics calculation
-  const charCount = editorContent.length;
-  const wordCount = editorContent.trim() ? editorContent.trim().split(/\s+/).length : 0;
+  const plainText = getPlainText(editorContent);
+  const charCount = plainText.length;
+  const wordCount = plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
 
   return (
     <div className="text-slate-200 min-h-screen flex flex-col justify-between w-full md:max-w-5xl lg:max-w-6xl mx-auto bg-slate-900 shadow-2xl relative transition-all duration-300 overflow-hidden">
@@ -412,12 +540,16 @@ export default function NotesPage() {
                   placeholder="ชื่อเอกสาร..."
                 />
 
-                {/* Content Input (Textarea with lined paper style) */}
-                <textarea
-                  value={editorContent}
-                  onChange={(e) => setEditorContent(e.target.value)}
-                  className="flex-1 w-full bg-transparent text-slate-200 text-sm focus:outline-none resize-none pt-4 pb-2 z-10 pl-6 pr-2 no-scrollbar leading-[1.8rem] placeholder-slate-600"
-                  placeholder="เริ่มพิมพ์บันทึกของคุณพี่ลีดตรงนี้ได้เลยค่ะ..."
+                {/* Content Input (contentEditable with lined paper style) */}
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  onInput={handleInput}
+                  onPaste={handlePaste}
+                  className="flex-1 w-full bg-transparent text-slate-200 text-sm focus:outline-none pt-4 pb-2 z-10 pl-6 pr-2 overflow-y-auto no-scrollbar leading-[1.8rem] contenteditable-placeholder min-h-[200px]"
+                  style={{ outline: 'none' }}
+                  data-placeholder="เริ่มพิมพ์บันทึกของคุณพี่ลีดตรงนี้ได้เลยค่ะ..."
+                  suppressContentEditableWarning
                 />
 
                 {/* Paper footer/Statistics bar */}
