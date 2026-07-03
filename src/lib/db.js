@@ -71,6 +71,17 @@ export async function initDB() {
       );
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS leed_notes (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // เพิ่มคอลัมน์เพิ่มเติมหากยังไม่มี
     await client.query('ALTER TABLE saved_texts ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;');
     await client.query('ALTER TABLE saved_texts ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0;');
@@ -81,6 +92,7 @@ export async function initDB() {
     await client.query('ALTER TABLE saved_texts ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id);');
     await client.query('ALTER TABLE leed_links ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id);');
     await client.query('ALTER TABLE two_fa_accounts ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id);');
+    await client.query('ALTER TABLE leed_notes ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;');
 
     // 5. เพิ่มบัญชีเริ่มต้น leed ถ้ายังไม่มี
     const checkUser = await client.query('SELECT id FROM users WHERE username = $1', ['leed']);
@@ -101,6 +113,7 @@ export async function initDB() {
     await client.query('UPDATE saved_texts SET user_id = $1 WHERE user_id IS NULL', [leedId]);
     await client.query('UPDATE leed_links SET user_id = $1 WHERE user_id IS NULL', [leedId]);
     await client.query('UPDATE two_fa_accounts SET user_id = $1 WHERE user_id IS NULL', [leedId]);
+    await client.query('UPDATE leed_notes SET user_id = $1 WHERE user_id IS NULL', [leedId]);
 
     await client.query('COMMIT');
   } catch (e) {

@@ -128,6 +128,14 @@ export default function HomeHub() {
             <span className="text-slate-200 text-xs md:text-sm font-medium drop-shadow-md">Auth 2FA</span>
           </Link>
 
+          {/* Leed Note App */}
+          <Link href="/notes" className="flex flex-col items-center gap-2 group outline-none">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-[1.5rem] bg-gradient-to-br from-orange-400 to-rose-600 shadow-lg shadow-orange-500/30 flex items-center justify-center text-white text-3xl group-hover:scale-95 group-active:scale-90 transition-all">
+              <i className="fa-solid fa-file-signature drop-shadow-md"></i>
+            </div>
+            <span className="text-slate-200 text-xs md:text-sm font-medium drop-shadow-md">Leed Note</span>
+          </Link>
+
           {/* Placeholder for future apps (optional visual effect) */}
           <div className="flex flex-col items-center gap-2 opacity-30">
             <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-[1.5rem] bg-slate-800/50 border border-slate-700 border-dashed flex items-center justify-center text-slate-500 text-2xl">
@@ -145,9 +153,9 @@ export default function HomeHub() {
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white text-xl opacity-50">
             <i className="fa-solid fa-phone"></i>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-400 to-red-600 flex items-center justify-center text-white text-xl opacity-50">
-            <i className="fa-solid fa-envelope"></i>
-          </div>
+          <Link href="/notes" className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-rose-600 flex items-center justify-center text-white text-xl shadow-lg shadow-orange-500/20 active:scale-90 transition-all" title="Leed Note">
+            <i className="fa-solid fa-file-signature"></i>
+          </Link>
           <Link href="/leedlink" className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-700 flex items-center justify-center text-white text-xl shadow-lg shadow-indigo-500/20 active:scale-90 transition-all" title="Leed Link">
             <i className="fa-solid fa-book-open"></i>
           </Link>
