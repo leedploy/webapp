@@ -20,6 +20,14 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Check environment configuration
+    if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_PUBLIC_URL) {
+      return NextResponse.json(
+        { error: 'R2 Storage variables (ACCOUNT_ID, ACCESS_KEY_ID, SECRET_ACCESS_KEY, PUBLIC_URL) are not fully configured.' },
+        { status: 500 }
+      );
+    }
+
     // 2. Parse form data
     const formData = await req.formData();
     const file = formData.get('file');
