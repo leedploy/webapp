@@ -227,8 +227,42 @@ export default function NotesPage() {
     }
   };
 
-  // Handle clipboard paste of image files
+  // Handle clipboard paste of image files and links
   const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    // 1. Check if the pasted content is a URL link
+    const text = e.clipboardData?.getData('text/plain');
+    if (text && /^https?:\/\/[^\s]+$/i.test(text.trim())) {
+      e.preventDefault();
+      const url = text.trim();
+      
+      const selection = window.getSelection();
+      if (!selection || !selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+      anchor.className = 'text-indigo-400 underline hover:text-indigo-300 cursor-pointer';
+      anchor.innerText = url;
+
+      range.insertNode(anchor);
+      
+      // Add a space after the link to make it easy to continue typing
+      const space = document.createTextNode('\u00A0');
+      range.collapse(false);
+      range.insertNode(space);
+      range.collapse(false);
+
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      if (editorRef.current) {
+        setEditorContent(editorRef.current.innerHTML);
+      }
+      return;
+    }
+
     const items = e.clipboardData?.items;
     if (!items) return;
 
@@ -302,6 +336,17 @@ export default function NotesPage() {
           }
         }
       }
+    }
+  };
+
+  // Handle click on editor (e.g. to open links in a new tab)
+  const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest('a');
+    if (anchor) {
+      e.preventDefault();
+      // Direct click opens link in new tab
+      window.open(anchor.href, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -546,6 +591,7 @@ export default function NotesPage() {
                   contentEditable
                   onInput={handleInput}
                   onPaste={handlePaste}
+                  onClick={handleEditorClick}
                   className="flex-1 w-full bg-transparent text-slate-200 text-sm focus:outline-none pt-4 pb-2 z-10 pl-6 pr-2 overflow-y-auto no-scrollbar leading-[1.8rem] contenteditable-placeholder min-h-[200px]"
                   style={{ outline: 'none' }}
                   data-placeholder="เริ่มพิมพ์บันทึกของคุณพี่ลีดตรงนี้ได้เลยค่ะ..."
