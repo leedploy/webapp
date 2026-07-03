@@ -39,6 +39,7 @@ export default function NotesPage() {
   const [verifyPasswordInput, setVerifyPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isProcessingTrash, setIsProcessingTrash] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const loadedNoteIdRef = useRef<number | null>(null);
@@ -1020,6 +1021,7 @@ export default function NotesPage() {
                           setConfirmPasswordNote(note);
                           setPasswordError('');
                           setVerifyPasswordInput('');
+                          setShowPassword(false);
                         }}
                         className="p-2 text-rose-450 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all active:scale-90 cursor-pointer"
                         title="ลบถาวร"
@@ -1039,6 +1041,7 @@ export default function NotesPage() {
                     setIsEmptyAllConfirmOpen(true);
                     setPasswordError('');
                     setVerifyPasswordInput('');
+                    setShowPassword(false);
                   }
                 }}
                 disabled={trashedNotes.length === 0}
@@ -1077,12 +1080,13 @@ export default function NotesPage() {
               </p>
             </div>
 
-            <div className="mt-4">
+            <div className="relative mt-4">
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="รหัสผ่านบัญชีของคุณ"
                 value={verifyPasswordInput}
                 onChange={(e) => setVerifyPasswordInput(e.target.value)}
+                autoComplete="new-password"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     if (isEmptyAllConfirmOpen) {
@@ -1092,16 +1096,24 @@ export default function NotesPage() {
                     }
                   }
                 }}
-                className="w-full bg-slate-900/90 border border-slate-700/60 rounded-xl px-4 py-2.5 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-rose-500/50 transition-colors animate-pulse"
+                className="w-full bg-slate-900/90 border border-slate-700/60 rounded-xl pl-4 pr-10 py-2.5 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
                 autoFocus
               />
-              {passwordError && (
-                <p className="text-rose-400 text-[10px] mt-1.5 flex items-center gap-1">
-                  <i className="fa-solid fa-circle-exclamation"></i>
-                  <span>{passwordError}</span>
-                </p>
-              )}
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors p-1 cursor-pointer flex items-center justify-center"
+                title={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+              >
+                <i className={`fa-regular ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-xs`}></i>
+              </button>
             </div>
+            {passwordError && (
+              <p className="text-rose-400 text-[10px] mt-1.5 flex items-center gap-1">
+                <i className="fa-solid fa-circle-exclamation"></i>
+                <span>{passwordError}</span>
+              </p>
+            )}
 
             <div className="flex gap-3 mt-6">
               <button
