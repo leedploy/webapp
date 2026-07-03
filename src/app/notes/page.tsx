@@ -9,6 +9,7 @@ interface Note {
   content: string;
   is_favorite: boolean;
   score: number;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +30,15 @@ export default function NotesPage() {
   // Modal for deleting note
   const [deletingNote, setDeletingNote] = useState<Note | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // States for Trash Bin
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const [trashedNotes, setTrashedNotes] = useState<Note[]>([]);
+  const [confirmPasswordNote, setConfirmPasswordNote] = useState<Note | null>(null);
+  const [isEmptyAllConfirmOpen, setIsEmptyAllConfirmOpen] = useState(false);
+  const [verifyPasswordInput, setVerifyPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [isProcessingTrash, setIsProcessingTrash] = useState(false);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const loadedNoteIdRef = useRef<number | null>(null);
@@ -56,6 +66,19 @@ export default function NotesPage() {
     setSaveStatus('idle');
   };
 
+  // Fetch trashed notes
+  const fetchTrashedNotes = async () => {
+    try {
+      const res = await fetch('/api/notes?trash=true');
+      if (res.ok) {
+        const data = await res.json();
+        setTrashedNotes(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch trashed notes', e);
+    }
+  };
+
   // Fetch all notes
   const fetchNotes = async (selectFirst = false) => {
     try {
@@ -67,12 +90,14 @@ export default function NotesPage() {
           handleSelectNote(data[0]);
         }
       }
+      fetchTrashedNotes();
     } catch (e) {
       console.error('Failed to fetch notes', e);
     } finally {
       setIsLoading(false);
     }
   };
+
 
   useEffect(() => {
     // Clock update on Status Bar
@@ -257,6 +282,103 @@ export default function NotesPage() {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
     return tempDiv.innerText || tempDiv.textContent || '';
+  };
+
+  // Restore note from trash
+  const handleRestoreNote = async (noteId: number) => {
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: noteId,
+          restore: true,
+        }),
+      });
+
+      if (res.ok) {
+        fetchNotes();
+      } else {
+        alert('เกิดข้อผิดพลาดในการกู้คืนเอกสาร');
+      }
+    } catch (e) {
+      console.error('Failed to restore note', e);
+    }
+  };
+
+  // Permanently delete a note (Requires password verification)
+  const handlePermanentDeleteNote = async (noteId: number) => {
+    if (!verifyPasswordInput) {
+      setPasswordError('กรุณากรอกรหัสผ่าน');
+      return;
+    }
+
+    setIsProcessingTrash(true);
+    setPasswordError('');
+
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: noteId,
+          password: verifyPasswordInput,
+          permanent: true,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setVerifyPasswordInput('');
+        setConfirmPasswordNote(null);
+        fetchNotes();
+      } else {
+        setPasswordError(data.error || 'เกิดข้อผิดพลาดในการลบเอกสาร');
+      }
+    } catch (e) {
+      console.error('Failed to permanently delete note', e);
+      setPasswordError('เกิดข้อผิดพลาดในการสื่อสารกับเซิร์ฟเวอร์');
+    } finally {
+      setIsProcessingTrash(false);
+    }
+  };
+
+  // Permanently delete all trashed notes (Requires password verification)
+  const handleEmptyTrash = async () => {
+    if (!verifyPasswordInput) {
+      setPasswordError('กรุณากรอกรหัสผ่าน');
+      return;
+    }
+
+    setIsProcessingTrash(true);
+    setPasswordError('');
+
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: verifyPasswordInput,
+          emptyAll: true,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setVerifyPasswordInput('');
+        setIsEmptyAllConfirmOpen(false);
+        fetchNotes();
+      } else {
+        setPasswordError(data.error || 'เกิดข้อผิดพลาดในการล้างถังขยะ');
+      }
+    } catch (e) {
+      console.error('Failed to empty trash', e);
+      setPasswordError('เกิดข้อผิดพลาดในการสื่อสารกับเซิร์ฟเวอร์');
+    } finally {
+      setIsProcessingTrash(false);
+    }
   };
 
   // Handle text input inside contentEditable
@@ -658,6 +780,25 @@ export default function NotesPage() {
               ))
             )}
           </div>
+
+          {/* Sidebar Footer: Trash Bin Button */}
+          <div className="p-3 border-t border-slate-700/40 bg-slate-950/40 flex items-center justify-between shrink-0">
+            <button
+              onClick={() => {
+                setIsTrashOpen(true);
+                fetchTrashedNotes();
+              }}
+              className="text-xs text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-900 rounded-lg cursor-pointer"
+            >
+              <i className="fa-regular fa-trash-can"></i>
+              <span>ถังขยะ</span>
+            </button>
+            {trashedNotes.length > 0 && (
+              <span className="text-[10px] bg-slate-850 text-slate-400 px-2 py-0.5 rounded-full font-bold">
+                {trashedNotes.length}
+              </span>
+            )}
+          </div>
         </aside>
 
         {/* WORKSPACE: Page Editor */}
@@ -783,7 +924,7 @@ export default function NotesPage() {
               <p className="text-slate-400 text-xs mt-2 leading-relaxed">
                 คุณพี่ลีดต้องการลบเอกสาร <br />
                 <strong className="text-slate-200">&ldquo;{deletingNote.title || 'บันทึกไม่มีชื่อ'}&rdquo;</strong> ใช่ไหมคะ?<br />
-                ลบแล้วข้อมูลนี้จะกู้คืนไม่ได้แล้วนะคะ
+                เอกสารนี้จะถูกย้ายไปที่ถังขยะและสามารถกู้คืนกลับมาได้ในภายหลังค่ะ
               </p>
             </div>
 
@@ -803,12 +944,198 @@ export default function NotesPage() {
                 {isDeleting ? (
                   <>
                     <i className="fa-solid fa-spinner fa-spin"></i>
-                    <span>กำลังลบ...</span>
+                    <span>กำลังย้าย...</span>
                   </>
                 ) : (
                   <>
                     <i className="fa-solid fa-trash-can"></i>
-                    <span>ลบเอกสาร</span>
+                    <span>ย้ายไปถังขยะ</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal ถังขยะเอกสาร */}
+      {isTrashOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-slate-800 border border-slate-700/60 rounded-2.5xl p-6 w-full max-w-lg shadow-2xl scale-100 transform transition-all duration-300 flex flex-col max-h-[85vh]">
+            
+            <div className="flex justify-between items-center pb-3 border-b border-slate-700/50 shrink-0">
+              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <i className="fa-regular fa-trash-can text-pink-500"></i>
+                <span>ถังขยะเอกสาร</span>
+              </h3>
+              <button
+                onClick={() => setIsTrashOpen(false)}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-900 transition-colors cursor-pointer"
+              >
+                <i className="fa-solid fa-xmark text-sm"></i>
+              </button>
+            </div>
+
+            {/* List of Trashed Notes */}
+            <div className="flex-1 overflow-y-auto my-4 space-y-2 pr-1 no-scrollbar min-h-[150px]">
+              {trashedNotes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-500 text-center">
+                  <div className="w-12 h-12 bg-slate-700/20 rounded-full flex items-center justify-center text-slate-650 text-xl mb-3 border border-slate-750">
+                    <i className="fa-regular fa-folder-open"></i>
+                  </div>
+                  <p className="text-xs">ไม่มีเอกสารในถังขยะ</p>
+                </div>
+              ) : (
+                trashedNotes.map((note) => (
+                  <div
+                    key={note.id}
+                    className="p-3 bg-slate-900/60 border border-slate-700/30 rounded-xl flex justify-between items-center hover:bg-slate-900/80 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1 pr-4">
+                      <h4 className="font-bold text-xs text-slate-200 truncate">{note.title || 'บันทึกไม่มีชื่อ'}</h4>
+                      <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                        {note.content ? getPlainText(note.content).slice(0, 50) : 'ว่างเปล่า'}
+                      </p>
+                      <span className="text-[9px] text-slate-600 block mt-1">
+                        ลบเมื่อ: {note.deleted_at ? new Date(note.deleted_at).toLocaleString('th-TH', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        }) : '-'}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        onClick={() => handleRestoreNote(note.id)}
+                        className="p-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg transition-all active:scale-90 cursor-pointer"
+                        title="กู้คืนเอกสาร"
+                      >
+                        <i className="fa-solid fa-arrow-rotate-left text-xs"></i>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setConfirmPasswordNote(note);
+                          setPasswordError('');
+                          setVerifyPasswordInput('');
+                        }}
+                        className="p-2 text-rose-450 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all active:scale-90 cursor-pointer"
+                        title="ลบถาวร"
+                      >
+                        <i className="fa-regular fa-trash-can text-xs"></i>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-between items-center pt-3 border-t border-slate-700/50 shrink-0 gap-3">
+              <button
+                onClick={() => {
+                  if (trashedNotes.length > 0) {
+                    setIsEmptyAllConfirmOpen(true);
+                    setPasswordError('');
+                    setVerifyPasswordInput('');
+                  }
+                }}
+                disabled={trashedNotes.length === 0}
+                className="py-2 px-4 rounded-xl text-xs font-semibold text-rose-400 border border-rose-500/20 hover:bg-rose-500/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+              >
+                ล้างถังขยะทั้งหมด
+              </button>
+              <button
+                onClick={() => setIsTrashOpen(false)}
+                className="py-2 px-4 rounded-xl text-xs font-semibold bg-slate-700 hover:bg-slate-650 text-slate-300 transition-colors cursor-pointer"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal ยืนยันรหัสผ่านเพื่อลบถาวร */}
+      {(confirmPasswordNote || isEmptyAllConfirmOpen) && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md transition-all duration-300">
+          <div className="bg-slate-800 border border-rose-500/40 rounded-2.5xl p-6 w-full max-w-sm shadow-2xl scale-100 transform transition-all duration-300">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-14 h-14 bg-rose-500/10 rounded-full flex items-center justify-center mb-4 text-rose-500 text-2xl border border-rose-500/20 animate-bounce">
+                <i className="fa-solid fa-lock"></i>
+              </div>
+              <h3 className="text-base font-bold text-slate-100">ยืนยันรหัสผ่านเพื่อลบถาวร</h3>
+              <p className="text-slate-400 text-xs mt-2 leading-relaxed">
+                {isEmptyAllConfirmOpen ? (
+                  <span>คุณพี่ลีดต้องการล้างถังขยะและ <strong className="text-rose-400">ลบไฟล์ทั้งหมดถาวร</strong> ใช่ไหมคะ?</span>
+                ) : (
+                  <span>คุณพี่ลีดต้องการ <strong className="text-rose-400">ลบเอกสาร &ldquo;{confirmPasswordNote?.title}&rdquo; ถาวร</strong> ใช่ไหมคะ?</span>
+                )}
+                <br />
+                เพื่อความปลอดภัยสูงสุด กรุณากรอกรหัสผ่านบัญชีของคุณค่ะ
+              </p>
+            </div>
+
+            <div className="mt-4">
+              <input
+                type="password"
+                placeholder="รหัสผ่านบัญชีของคุณ"
+                value={verifyPasswordInput}
+                onChange={(e) => setVerifyPasswordInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (isEmptyAllConfirmOpen) {
+                      handleEmptyTrash();
+                    } else if (confirmPasswordNote) {
+                      handlePermanentDeleteNote(confirmPasswordNote.id);
+                    }
+                  }
+                }}
+                className="w-full bg-slate-900/90 border border-slate-700/60 rounded-xl px-4 py-2.5 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-rose-500/50 transition-colors animate-pulse"
+                autoFocus
+              />
+              {passwordError && (
+                <p className="text-rose-400 text-[10px] mt-1.5 flex items-center gap-1">
+                  <i className="fa-solid fa-circle-exclamation"></i>
+                  <span>{passwordError}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setConfirmPasswordNote(null);
+                  setIsEmptyAllConfirmOpen(false);
+                  setVerifyPasswordInput('');
+                  setPasswordError('');
+                }}
+                disabled={isProcessingTrash}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 bg-slate-700 hover:bg-slate-650 transition-colors disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={() => {
+                  if (isEmptyAllConfirmOpen) {
+                    handleEmptyTrash();
+                  } else if (confirmPasswordNote) {
+                    handlePermanentDeleteNote(confirmPasswordNote.id);
+                  }
+                }}
+                disabled={isProcessingTrash}
+                className="flex-1 py-2 rounded-xl text-xs font-bold bg-rose-500 hover:bg-rose-600 text-slate-100 transition-colors disabled:opacity-50 flex justify-center items-center gap-1.5"
+              >
+                {isProcessingTrash ? (
+                  <>
+                    <i className="fa-solid fa-spinner fa-spin"></i>
+                    <span>กำลังประมวลผล...</span>
+                  </>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-trash-can"></i>
+                    <span>ยืนยันลบถาวร</span>
                   </>
                 )}
               </button>
