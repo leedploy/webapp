@@ -201,8 +201,8 @@ export default function NotesPage() {
       {/* Background decorations */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950"></div>
-        <div className="absolute -top-[30%] -right-[20%] w-[70%] h-[70%] rounded-full bg-rose-600/10 blur-[120px]"></div>
-        <div className="absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] rounded-full bg-orange-600/10 blur-[120px]"></div>
+        <div className="absolute -top-[30%] -right-[20%] w-[70%] h-[70%] rounded-full bg-indigo-600/10 blur-[120px]"></div>
+        <div className="absolute -bottom-[20%] -left-[20%] w-[60%] h-[60%] rounded-full bg-cyan-600/10 blur-[120px]"></div>
       </div>
 
       {/* Top Header Status Bar */}
@@ -226,8 +226,8 @@ export default function NotesPage() {
             >
               <i className="fa-solid fa-arrow-left"></i>
             </Link>
-            <h1 className="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-rose-500 flex items-center gap-2">
-              <i className="fa-solid fa-file-signature text-orange-400"></i>
+            <h1 className="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-500 flex items-center gap-2">
+              <i className="fa-solid fa-file-signature text-indigo-400"></i>
               <span>Leed Note</span>
             </h1>
           </div>
@@ -238,8 +238,8 @@ export default function NotesPage() {
               <span className="text-xs text-slate-400 flex items-center gap-1.5 px-3 py-1 bg-slate-900/50 border border-slate-700/40 rounded-lg">
                 {saveStatus === 'saving' && (
                   <>
-                    <i className="fa-solid fa-spinner fa-spin text-orange-400 text-[10px]"></i>
-                    <span className="text-[10px] text-orange-400">กำลังบันทึก...</span>
+                    <i className="fa-solid fa-spinner fa-spin text-indigo-400 text-[10px]"></i>
+                    <span className="text-[10px] text-indigo-400">กำลังบันทึก...</span>
                   </>
                 )}
                 {saveStatus === 'saved' && (
@@ -278,7 +278,7 @@ export default function NotesPage() {
           <div className="p-4 border-b border-slate-700/40 space-y-3">
             <button
               onClick={handleCreateNote}
-              className="w-full bg-gradient-to-r from-orange-400 to-rose-500 hover:from-orange-500 hover:to-rose-600 active:scale-98 transition-all text-slate-950 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md shadow-orange-500/10 cursor-pointer"
+              className="w-full bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 active:scale-98 transition-all text-slate-950 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md shadow-indigo-500/10 cursor-pointer"
             >
               <i className="fa-solid fa-plus text-sm"></i>
               <span>สร้างบันทึกใหม่</span>
@@ -292,7 +292,7 @@ export default function NotesPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700/60 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-orange-500 transition-colors"
+                className="w-full bg-slate-900 border border-slate-700/60 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                 placeholder="ค้นหาเอกสาร..."
               />
               {searchQuery && (
@@ -310,7 +310,7 @@ export default function NotesPage() {
           <div className="flex-1 overflow-y-auto p-2 space-y-1.5 no-scrollbar">
             {isLoading ? (
               <div className="text-center py-10 text-slate-500">
-                <i className="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-orange-400 block"></i>
+                <i className="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-indigo-400 block"></i>
                 <span className="text-xs">กำลังโหลดเอกสาร...</span>
               </div>
             ) : filteredNotes.length === 0 ? (
@@ -325,7 +325,7 @@ export default function NotesPage() {
                   onClick={() => handleSelectNote(note)}
                   className={`group p-3 rounded-xl border transition-all cursor-pointer flex justify-between items-center ${
                     activeNoteId === note.id
-                      ? 'bg-orange-500/10 border-orange-500/40 text-orange-400 shadow-sm shadow-orange-500/5'
+                      ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-400 shadow-sm shadow-indigo-500/5'
                       : 'bg-slate-900/40 border-slate-700/40 text-slate-300 hover:bg-slate-800/40 hover:border-slate-650'
                   }`}
                 >
@@ -389,7 +389,7 @@ export default function NotesPage() {
                   <button
                     onClick={handleCopyAll}
                     disabled={!editorContent}
-                    className="flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300 bg-slate-900/80 hover:bg-slate-800 disabled:opacity-40 border border-slate-700/50 rounded-lg px-3 py-1.5 active:scale-95 transition-all"
+                    className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 bg-slate-900/80 hover:bg-slate-800 disabled:opacity-40 border border-slate-700/50 rounded-lg px-3 py-1.5 active:scale-95 transition-all"
                     title="คัดลอกบทความทั้งหมด"
                   >
                     <i className="fa-regular fa-copy"></i>
@@ -401,14 +401,14 @@ export default function NotesPage() {
               {/* Lined writing paper canvas */}
               <div className="flex-1 bg-slate-900 border border-slate-700/60 rounded-2xl shadow-xl flex flex-col p-6 overflow-hidden relative group/paper">
                 {/* Decorative margin line (paper style) */}
-                <div className="absolute top-0 bottom-0 left-12 w-[1px] bg-orange-500/10 pointer-events-none"></div>
+                <div className="absolute top-0 bottom-0 left-12 w-[1px] bg-indigo-500/10 pointer-events-none"></div>
 
                 {/* Title Input */}
                 <input
                   type="text"
                   value={editorTitle}
                   onChange={(e) => setEditorTitle(e.target.value)}
-                  className="w-full bg-transparent border-b border-slate-800 focus:border-orange-500/50 text-slate-100 font-extrabold text-base md:text-lg pb-2.5 focus:outline-none placeholder-slate-600 transition-colors z-10 pl-6 shrink-0"
+                  className="w-full bg-transparent border-b border-slate-800 focus:border-indigo-500/50 text-slate-100 font-extrabold text-base md:text-lg pb-2.5 focus:outline-none placeholder-slate-600 transition-colors z-10 pl-6 shrink-0"
                   placeholder="ชื่อเอกสาร..."
                 />
 

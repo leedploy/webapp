@@ -130,7 +130,7 @@ export default function HomeHub() {
 
           {/* Leed Note App */}
           <Link href="/notes" className="flex flex-col items-center gap-2 group outline-none">
-            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-[1.5rem] bg-gradient-to-br from-orange-400 to-rose-600 shadow-lg shadow-orange-500/30 flex items-center justify-center text-white text-3xl group-hover:scale-95 group-active:scale-90 transition-all">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-[1.5rem] bg-gradient-to-br from-indigo-500 to-cyan-500 shadow-lg shadow-indigo-500/30 flex items-center justify-center text-white text-3xl group-hover:scale-95 group-active:scale-90 transition-all">
               <i className="fa-solid fa-file-signature drop-shadow-md"></i>
             </div>
             <span className="text-slate-200 text-xs md:text-sm font-medium drop-shadow-md">Leed Note</span>
@@ -153,7 +153,7 @@ export default function HomeHub() {
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white text-xl opacity-50">
             <i className="fa-solid fa-phone"></i>
           </div>
-          <Link href="/notes" className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-rose-600 flex items-center justify-center text-white text-xl shadow-lg shadow-orange-500/20 active:scale-90 transition-all" title="Leed Note">
+          <Link href="/notes" className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white text-xl shadow-lg shadow-indigo-500/20 active:scale-90 transition-all" title="Leed Note">
             <i className="fa-solid fa-file-signature"></i>
           </Link>
           <Link href="/leedlink" className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-700 flex items-center justify-center text-white text-xl shadow-lg shadow-indigo-500/20 active:scale-90 transition-all" title="Leed Link">
