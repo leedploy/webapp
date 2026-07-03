@@ -11,7 +11,7 @@ export async function GET() {
 
     await initDB();
     const { rows } = await pool.query(
-      'SELECT id, title, content, created_at, updated_at FROM leed_notes WHERE user_id = $1 ORDER BY updated_at DESC',
+      'SELECT id, title, content, is_favorite, created_at, updated_at FROM leed_notes WHERE user_id = $1 ORDER BY is_favorite DESC, updated_at DESC',
       [user.id]
     );
 
@@ -46,7 +46,7 @@ export async function PUT(req) {
 
     await initDB();
     const body = await req.json();
-    const { id, title, content } = body;
+    const { id, title, content, is_favorite } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Missing note id' }, { status: 400 });
@@ -54,11 +54,14 @@ export async function PUT(req) {
 
     const query = `
       UPDATE leed_notes 
-      SET title = COALESCE($1, title), content = COALESCE($2, content), updated_at = CURRENT_TIMESTAMP 
-      WHERE id = $3 AND user_id = $4 
+      SET title = COALESCE($1, title), 
+          content = COALESCE($2, content), 
+          is_favorite = COALESCE($3, is_favorite), 
+          updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $4 AND user_id = $5 
       RETURNING *
     `;
-    const { rows } = await pool.query(query, [title, content, id, user.id]);
+    const { rows } = await pool.query(query, [title, content, is_favorite, id, user.id]);
 
     if (rows.length === 0) {
       return NextResponse.json({ error: 'Note not found or unauthorized' }, { status: 404 });

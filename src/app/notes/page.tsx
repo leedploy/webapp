@@ -7,6 +7,7 @@ interface Note {
   id: number;
   title: string;
   content: string;
+  is_favorite: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -194,6 +195,56 @@ export default function NotesPage() {
       console.error('Failed to delete note', e);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Toggle favorite status
+  const handleToggleFavorite = async (noteId: number, currentStatus: boolean, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+
+    const nextStatus = !currentStatus;
+
+    // Optimistically update UI
+    setNotes(prev =>
+      prev.map(note =>
+        note.id === noteId ? { ...note, is_favorite: nextStatus } : note
+      ).sort((a, b) => {
+        if (a.is_favorite !== b.is_favorite) {
+          return a.is_favorite ? -1 : 1;
+        }
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      })
+    );
+
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: noteId,
+          is_favorite: nextStatus,
+        }),
+      });
+
+      if (!res.ok) {
+        // Rollback state if failed
+        const response = await fetch('/api/notes');
+        if (response.ok) {
+          const data = await response.json();
+          setNotes(data);
+        }
+        alert('เกิดข้อผิดพลาดในการตั้งค่าความสำคัญ');
+      }
+    } catch (err) {
+      console.error('Failed to toggle favorite:', err);
+      // Rollback
+      const response = await fetch('/api/notes');
+      if (response.ok) {
+        const data = await response.json();
+        setNotes(data);
+      }
     }
   };
 
@@ -561,16 +612,29 @@ export default function NotesPage() {
                       })}
                     </span>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeletingNote(note);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-2 text-slate-500 hover:text-rose-450 hover:bg-slate-950/40 rounded-lg active:scale-90 transition-all shrink-0"
-                    title="ลบบันทึกนี้"
-                  >
-                    <i className="fa-regular fa-trash-can text-xs"></i>
-                  </button>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      onClick={(e) => handleToggleFavorite(note.id, note.is_favorite, e)}
+                      className={`p-2 rounded-lg active:scale-90 transition-all ${
+                        note.is_favorite
+                          ? 'text-pink-500 hover:bg-slate-950/40'
+                          : 'opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-500 hover:text-pink-400 hover:bg-slate-950/40'
+                      }`}
+                      title={note.is_favorite ? 'เลิกชอบ' : 'ชอบบันทึกนี้'}
+                    >
+                      <i className={`${note.is_favorite ? 'fa-solid' : 'fa-regular'} fa-heart text-xs`}></i>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeletingNote(note);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-2 text-slate-500 hover:text-rose-450 hover:bg-slate-950/40 rounded-lg active:scale-90 transition-all"
+                      title="ลบบันทึกนี้"
+                    >
+                      <i className="fa-regular fa-trash-can text-xs"></i>
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -606,6 +670,25 @@ export default function NotesPage() {
                 </button>
 
                 <div className="flex gap-2 ml-auto">
+                  {activeNoteId !== null && (() => {
+                    const activeNote = notes.find(n => n.id === activeNoteId);
+                    const isActiveFavorite = activeNote ? activeNote.is_favorite : false;
+                    return (
+                      <button
+                        onClick={(e) => activeNote && handleToggleFavorite(activeNote.id, activeNote.is_favorite, e)}
+                        className={`flex items-center gap-1.5 text-xs border rounded-lg px-3 py-1.5 active:scale-95 transition-all ${
+                          isActiveFavorite
+                            ? 'text-pink-500 bg-pink-500/10 border-pink-500/30 hover:bg-pink-500/20'
+                            : 'text-slate-400 hover:text-pink-400 bg-slate-900/80 hover:bg-slate-800 border-slate-700/50'
+                        }`}
+                        title={isActiveFavorite ? 'เลิกชอบ' : 'ชอบบันทึกนี้'}
+                      >
+                        <i className={`${isActiveFavorite ? 'fa-solid' : 'fa-regular'} fa-heart`}></i>
+                        <span>{isActiveFavorite ? 'ชอบแล้ว' : 'ชอบ'}</span>
+                      </button>
+                    );
+                  })()}
+
                   <button
                     onClick={handleCopyAll}
                     disabled={!editorContent}
