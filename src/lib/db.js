@@ -88,6 +88,7 @@ export async function initDB() {
     await client.query("ALTER TABLE saved_texts ADD COLUMN IF NOT EXISTS profile VARCHAR(100) DEFAULT 'Grok imagine';");
     await client.query('ALTER TABLE leed_links ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0;');
     await client.query('ALTER TABLE leed_notes ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN DEFAULT FALSE;');
+    await client.query('ALTER TABLE leed_notes ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0;');
 
     // 4. เพิ่มคอลัมน์ user_id ในตารางหลักต่างๆ
     await client.query('ALTER TABLE saved_texts ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id);');

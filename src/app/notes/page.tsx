@@ -8,6 +8,7 @@ interface Note {
   title: string;
   content: string;
   is_favorite: boolean;
+  score: number;
   created_at: string;
   updated_at: string;
 }
@@ -198,21 +199,23 @@ export default function NotesPage() {
     }
   };
 
-  // Toggle favorite status
-  const handleToggleFavorite = async (noteId: number, currentStatus: boolean, e?: React.MouseEvent) => {
+  // Update heart score (priority)
+  const handleUpdateScore = async (noteId: number, nextScore: number, e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
     }
 
-    const nextStatus = !currentStatus;
+    if (nextScore < 0) return;
 
     // Optimistically update UI
     setNotes(prev =>
       prev.map(note =>
-        note.id === noteId ? { ...note, is_favorite: nextStatus } : note
+        note.id === noteId ? { ...note, score: nextScore } : note
       ).sort((a, b) => {
-        if (a.is_favorite !== b.is_favorite) {
-          return a.is_favorite ? -1 : 1;
+        const scoreA = a.score || 0;
+        const scoreB = b.score || 0;
+        if (scoreA !== scoreB) {
+          return scoreB - scoreA;
         }
         return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
       })
@@ -224,7 +227,7 @@ export default function NotesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: noteId,
-          is_favorite: nextStatus,
+          score: nextScore,
         }),
       });
 
@@ -235,10 +238,10 @@ export default function NotesPage() {
           const data = await response.json();
           setNotes(data);
         }
-        alert('เกิดข้อผิดพลาดในการตั้งค่าความสำคัญ');
+        alert('เกิดข้อผิดพลาดในการตั้งค่าคะแนนหัวใจ');
       }
     } catch (err) {
-      console.error('Failed to toggle favorite:', err);
+      console.error('Failed to update score:', err);
       // Rollback
       const response = await fetch('/api/notes');
       if (response.ok) {
@@ -612,18 +615,34 @@ export default function NotesPage() {
                       })}
                     </span>
                   </div>
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <button
-                      onClick={(e) => handleToggleFavorite(note.id, note.is_favorite, e)}
-                      className={`p-2 rounded-lg active:scale-90 transition-all ${
-                        note.is_favorite
-                          ? 'text-pink-500 hover:bg-slate-950/40'
-                          : 'opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-500 hover:text-pink-400 hover:bg-slate-950/40'
-                      }`}
-                      title={note.is_favorite ? 'เลิกชอบ' : 'ชอบบันทึกนี้'}
-                    >
-                      <i className={`${note.is_favorite ? 'fa-solid' : 'fa-regular'} fa-heart text-xs`}></i>
-                    </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Score (Heart Priority) Control */}
+                    <div className="flex flex-col items-center select-none">
+                      <button
+                        onClick={(e) => handleUpdateScore(note.id, (note.score || 0) + 1, e)}
+                        className="text-slate-500 hover:text-pink-400 active:scale-75 transition-all p-0.5 cursor-pointer"
+                        title="เพิ่มแต้มหัวใจ (+1)"
+                      >
+                        <i className="fa-solid fa-chevron-up text-[10px]"></i>
+                      </button>
+                      
+                      <div className="flex items-center gap-0.5 my-0.5">
+                        <i className={`fa-solid fa-heart text-[10px] ${(note.score || 0) > 0 ? 'text-pink-500' : 'text-slate-600'}`}></i>
+                        <span className={`text-[10px] font-extrabold ${(note.score || 0) > 0 ? 'text-pink-500' : 'text-slate-650'}`}>
+                          {note.score || 0}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={(e) => handleUpdateScore(note.id, (note.score || 0) - 1, e)}
+                        disabled={(note.score || 0) <= 0}
+                        className="text-slate-500 hover:text-slate-400 disabled:opacity-20 disabled:hover:text-slate-500 active:scale-75 transition-all p-0.5 cursor-pointer"
+                        title="ลดแต้มหัวใจ (-1)"
+                      >
+                        <i className="fa-solid fa-chevron-down text-[10px]"></i>
+                      </button>
+                    </div>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -672,20 +691,29 @@ export default function NotesPage() {
                 <div className="flex gap-2 ml-auto">
                   {activeNoteId !== null && (() => {
                     const activeNote = notes.find(n => n.id === activeNoteId);
-                    const isActiveFavorite = activeNote ? activeNote.is_favorite : false;
+                    const currentScore = activeNote ? (activeNote.score || 0) : 0;
                     return (
-                      <button
-                        onClick={(e) => activeNote && handleToggleFavorite(activeNote.id, activeNote.is_favorite, e)}
-                        className={`flex items-center gap-1.5 text-xs border rounded-lg px-3 py-1.5 active:scale-95 transition-all ${
-                          isActiveFavorite
-                            ? 'text-pink-500 bg-pink-500/10 border-pink-500/30 hover:bg-pink-500/20'
-                            : 'text-slate-400 hover:text-pink-400 bg-slate-900/80 hover:bg-slate-800 border-slate-700/50'
-                        }`}
-                        title={isActiveFavorite ? 'เลิกชอบ' : 'ชอบบันทึกนี้'}
-                      >
-                        <i className={`${isActiveFavorite ? 'fa-solid' : 'fa-regular'} fa-heart`}></i>
-                        <span>{isActiveFavorite ? 'ชอบแล้ว' : 'ชอบ'}</span>
-                      </button>
+                      <div className="flex items-center bg-slate-900/80 border border-slate-700/50 rounded-lg overflow-hidden h-[30px]">
+                        <button
+                          onClick={(e) => activeNote && handleUpdateScore(activeNote.id, currentScore - 1, e)}
+                          disabled={!activeNote || currentScore <= 0}
+                          className="px-2.5 h-full flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                          title="ลดแต้มหัวใจ (-1)"
+                        >
+                          <i className="fa-solid fa-minus text-[10px]"></i>
+                        </button>
+                        <span className="px-3 h-full flex items-center gap-1 text-xs font-bold text-pink-500 bg-slate-950/40 border-x border-slate-700/30 select-none">
+                          <i className={`fa-solid fa-heart ${currentScore > 0 ? 'animate-pulse' : 'text-slate-650'}`}></i>
+                          <span>{currentScore}</span>
+                        </span>
+                        <button
+                          onClick={(e) => activeNote && handleUpdateScore(activeNote.id, currentScore + 1, e)}
+                          className="px-2.5 h-full flex items-center justify-center text-slate-400 hover:text-pink-400 hover:bg-slate-800 transition-colors cursor-pointer"
+                          title="เพิ่มแต้มหัวใจ (+1)"
+                        >
+                          <i className="fa-solid fa-plus text-[10px]"></i>
+                        </button>
+                      </div>
                     );
                   })()}
 
