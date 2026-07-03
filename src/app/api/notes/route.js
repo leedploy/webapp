@@ -130,13 +130,13 @@ export async function DELETE(req) {
       }
 
       // Fetch the user's password from the users table
-      const userQuery = 'SELECT password FROM users WHERE id = $1';
+      const userQuery = 'SELECT password_hash FROM users WHERE id = $1';
       const { rows: userRows } = await pool.query(userQuery, [user.id]);
       if (userRows.length === 0) {
         return NextResponse.json({ error: 'ไม่พบข้อมูลผู้ใช้' }, { status: 404 });
       }
       
-      const storedPassword = userRows[0].password;
+      const storedPassword = userRows[0].password_hash;
       const isPasswordValid = verifyPassword(password, storedPassword);
       if (!isPasswordValid) {
         return NextResponse.json({ error: 'รหัสผ่านไม่ถูกต้อง' }, { status: 401 });
