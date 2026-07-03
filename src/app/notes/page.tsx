@@ -227,40 +227,87 @@ export default function NotesPage() {
     }
   };
 
-  // Handle clipboard paste of image files and links
+  // Handle clipboard paste of image files, YouTube embeds, and links
   const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
-    // 1. Check if the pasted content is a URL link
     const text = e.clipboardData?.getData('text/plain');
-    if (text && /^https?:\/\/[^\s]+$/i.test(text.trim())) {
-      e.preventDefault();
-      const url = text.trim();
+    
+    if (text) {
+      const trimmedText = text.trim();
       
-      const selection = window.getSelection();
-      if (!selection || !selection.rangeCount) return;
-      const range = selection.getRangeAt(0);
+      // 1. Check if the pasted content is a YouTube link
+      const ytRegex = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/i;
+      const ytMatch = trimmedText.match(ytRegex);
 
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.target = '_blank';
-      anchor.rel = 'noopener noreferrer';
-      anchor.className = 'text-indigo-400 underline hover:text-indigo-300 cursor-pointer';
-      anchor.innerText = url;
+      if (ytMatch) {
+        e.preventDefault();
+        const videoId = ytMatch[1];
 
-      range.insertNode(anchor);
-      
-      // Add a space after the link to make it easy to continue typing
-      const space = document.createTextNode('\u00A0');
-      range.collapse(false);
-      range.insertNode(space);
-      range.collapse(false);
+        const selection = window.getSelection();
+        if (!selection || !selection.rangeCount) return;
+        const range = selection.getRangeAt(0);
 
-      selection.removeAllRanges();
-      selection.addRange(range);
+        // Create container for iframe
+        const container = document.createElement('div');
+        container.setAttribute('contenteditable', 'false');
+        container.className = 'my-4 max-w-md md:max-w-lg mx-auto aspect-video rounded-xl overflow-hidden border border-slate-700/60 shadow-lg select-all block';
+        
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://www.youtube.com/embed/${videoId}`;
+        iframe.className = 'w-full h-full';
+        iframe.frameBorder = '0';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        iframe.allowFullscreen = true;
 
-      if (editorRef.current) {
-        setEditorContent(editorRef.current.innerHTML);
+        container.appendChild(iframe);
+        range.insertNode(container);
+
+        // Add a line break after the video container to allow clean typing below it
+        const br = document.createElement('br');
+        range.collapse(false);
+        range.insertNode(br);
+        range.collapse(false);
+
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        if (editorRef.current) {
+          setEditorContent(editorRef.current.innerHTML);
+        }
+        return;
       }
-      return;
+
+      // 2. Check if the pasted content is a generic URL link
+      if (/^https?:\/\/[^\s]+$/i.test(trimmedText)) {
+        e.preventDefault();
+        const url = trimmedText;
+        
+        const selection = window.getSelection();
+        if (!selection || !selection.rangeCount) return;
+        const range = selection.getRangeAt(0);
+
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        anchor.className = 'text-indigo-400 underline hover:text-indigo-300 cursor-pointer';
+        anchor.innerText = url;
+
+        range.insertNode(anchor);
+        
+        // Add a space after the link to make it easy to continue typing
+        const space = document.createTextNode('\u00A0');
+        range.collapse(false);
+        range.insertNode(space);
+        range.collapse(false);
+
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        if (editorRef.current) {
+          setEditorContent(editorRef.current.innerHTML);
+        }
+        return;
+      }
     }
 
     const items = e.clipboardData?.items;
