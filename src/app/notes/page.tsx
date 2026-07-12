@@ -487,6 +487,45 @@ export default function NotesPage() {
       }
     }
 
+    // 3. Clean and paste formatted HTML (to prevent black text color issue)
+    const html = e.clipboardData?.getData('text/html');
+    if (html) {
+      e.preventDefault();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      
+      // Clean up inline styles from all elements
+      const allElements = doc.body.getElementsByTagName('*');
+      for (let i = 0; i < allElements.length; i++) {
+        const el = allElements[i] as HTMLElement;
+        el.style.color = '';
+        el.style.backgroundColor = '';
+        el.style.background = '';
+        if (el.hasAttribute('color')) el.removeAttribute('color');
+        if (el.hasAttribute('bgcolor')) el.removeAttribute('bgcolor');
+      }
+      
+      const cleanedHtml = doc.body.innerHTML;
+      
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        
+        const fragment = range.createContextualFragment(cleanedHtml);
+        range.insertNode(fragment);
+        range.collapse(false);
+        
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      
+      if (editorRef.current) {
+        setEditorContent(editorRef.current.innerHTML);
+      }
+      return;
+    }
+
     const items = e.clipboardData?.items;
     if (!items) return;
 
